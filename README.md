@@ -685,3 +685,14 @@ To run the CommutoBot and interact with it in your browser, follow these steps:
 - Type your questions in the input box and click 'Send' to chat with CommutoBot interactively.
 
 ---
+
+## Summary: 
+
+- **Principles of Prompting:** Write clear instructions and give the model time to think.
+- **Iterative prompt development:** Involves idea formulation, implementation, experimental results analysis, and error analysis.
+- **Prompt roles:** Define the role, purpose, and characteristics of the model.
+- **Basic techniques:** Zero-shot, one-shot, few-shot, and chain-of-thought
+- **Capabilities:** Summarizing, inferring, transforming, expanding.
+- **Chatbot:** Simulates conversation using prompts to generate responses.
+- **Order Bot:** Example chatbot for ordering pizza with interactive web UI.
+- **CommutoBot:** Example ride-sharing chatbot with interactive web UI.
