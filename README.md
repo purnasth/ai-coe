@@ -407,9 +407,9 @@ print(response)
 Expanding is the process of elaborating on a given input, adding more detail, context, or information. In prompt engineering, expansion prompts guide the model to provide a more comprehensive response based on the initial input.
 
 **Real-life Example:**
-Customize the automated reply to a customer email 
+Customize the automated reply to a customer email
 
-```python
+````python
 macbook_sentiment = "positive"
 
 macbook_review = """
@@ -424,7 +424,7 @@ Generate a reply to thank the customer for their review.
 If the sentiment is positive or neutral, thank them for \
 their review.
 If the sentiment is negative, apologize and suggest that \
-they can reach out to customer service. 
+they can reach out to customer service.
 Make sure to use specific details from the review.
 Write in a concise and professional tone.
 Sign the email as `AI customer agent`.
@@ -433,7 +433,255 @@ Review sentiment: {macbook_sentiment}
 """
 macbook_response = get_completion(macbook_prompt)
 print(macbook_response)
-```
+````
 
 `Note`: See `expanding.py` for practical code examples using OpenAI's API.
 
+## Chatbot
+
+A **chatbot** is an AI-powered application that simulates conversation with users, typically via text. In prompt engineering, chatbots use prompts to generate relevant and helpful responses based on user input.
+
+### How It Works
+
+The chatbot receives a user's message, formulates a prompt, sends it to a language model (like OpenAI's GPT), and returns the generated response. The prompt can include instructions, context, or formatting guidelines to control the chatbot's behavior.
+
+### Example: Simple Chatbot Implementation
+
+Suppose you have a chatbot that uses OpenAI's API to generate responses. Here’s a minimal example:
+
+```python
+# chatbot/chatbot.py
+from openai_helper import get_completion
+
+def chat(user_message):
+    prompt = f"You are a helpful assistant. Respond to the user's message:\nUser: {user_message}\nAssistant:"
+    response = get_completion(prompt)
+    return response
+
+# Example usage:
+if __name__ == "__main__":
+    user_input = "Can you recommend a good laptop for programming?"
+    print(chat(user_input))
+```
+
+**How it works:**
+
+- The `chat` function takes the user's message, creates a prompt for the model, and returns the model's response.
+- The prompt sets the assistant's persona and provides the user's message as context.
+
+---
+
+**Tip:** You can expand the chatbot by adding conversation history, handling different user intents, or customizing the assistant's persona for your application.
+
+`Note`: See `chatbot.py` for a complete chatbot implementation using OpenAI's API and run this using `python -m chatbot.chatbot`.
+
+### Example: Order Bot
+
+`Note`: for code example, see `orderbot.py`.
+
+Sample Conversation with the Order Bot:
+
+```
+User:
+
+Assistant:
+
+Hello! Welcome to our pizza place! 😊 Ready to place an order? What would you like today?
+
+User:
+
+Hi
+
+Assistant:
+
+Hi there! 😊 Thanks for stopping by. What delicious pizza or sides can I get started for you today?
+
+User:
+
+I would like a large pepperoni pizza and a small greek salad.
+
+Assistant:
+
+Great choices! Just to clarify, our pepperoni pizza sizes are:
+
+Large for $12.95
+Medium for $10.00
+Small for $7.00
+And our Greek salad sizes are:
+
+Large for $7.25
+Small for $5.00
+Which sizes would you like for your pizza and salad?
+
+User:
+
+Delivery
+
+Assistant:
+
+Got it, delivery! 😊
+Could you please provide the delivery address?
+
+User:
+
+123 Main Street
+
+Assistant:
+
+Thanks! So, just to confirm, you’d like a large pepperoni pizza for $12.95 and a small Greek salad for $5.00, delivered to 123 Main Street.
+
+Would you like to add anything else? Maybe some drinks or extra toppings?
+
+User:
+
+Add extra cheese to the pizza, please.
+
+Assistant:
+
+Sure thing! Extra cheese for $2.00 added to your large pepperoni pizza.
+
+Would you like to add any drinks or other toppings?
+
+User:
+
+No, that's all.
+
+Assistant:
+
+Perfect! Here's your order:
+
+Large pepperoni pizza with extra cheese ($12.95 + $2.00)
+Small Greek salad ($5.00)
+Delivery to 123 Main Street
+Would you like to pay now or upon delivery?
+
+User:
+
+Credit card
+
+Assistant:
+
+Great! I'll process your payment with a credit card now. 😊
+
+Thank you so much for your order! It’ll be on its way shortly. Have a wonderful day!
+```
+
+## Running the Order Bot
+
+To run the Order Bot and interact with it in your browser, follow these steps:
+
+1. **Run as a Python module (for development/testing):**
+
+   ```bash
+   python -m chatbot.orderbot
+   ```
+
+   This will execute the script, but for the full interactive web experience, use the Panel server as below.
+
+2. **Serve the Order Bot dashboard with Panel:**
+   ```bash
+   PYTHONPATH=$(pwd) ~/.local/bin/panel serve --show chatbot/orderbot.py
+   ```
+   - This command starts a local Bokeh server and opens the Order Bot dashboard in your default web browser.
+   - You should see output like:
+     ```
+     2025-06-30 11:11:36,049 Bokeh app running at: http://localhost:5006/orderbot
+     ```
+   - Open your browser and go to: [http://localhost:5006/orderbot](http://localhost:5006/orderbot)
+
+**Note:**
+
+- The `PYTHONPATH=$(pwd)` part ensures that your project root is in the Python path so imports work correctly.
+- The `~/.local/bin/panel` path is used if Panel is installed locally for your user. Adjust if your environment differs.
+
+---
+
+### Example: CommutoBot (Ride-Sharing Chatbot)
+
+`Note`: for code example, see `chatbot/commuto_chatbot.py`.
+
+Sample Conversation with CommutoBot:
+
+```
+User:
+Hi!
+
+CommutoBot:
+Hello! 👋 I'm CommutoBot, your friendly ride-sharing assistant. How can I help you today? Are you looking to find a ride, post a ride, or learn more about Commuto?
+
+User:
+How do I find a ride?
+
+CommutoBot:
+To find a ride, go to the "Find a Ride" page, enter your starting point and destination, and browse available rides. You can message the ride owner and confirm your spot. Make sure you're logged in with your organization email for access!
+
+User:
+What are the rules for posting a ride?
+
+CommutoBot:
+Great question! When posting a ride:
+- Only post if you are sure you'll make the trip and be on time.
+- Carry a valid driving license.
+- Be polite and respect your passengers' time and comfort.
+- Drive safely and follow all traffic rules.
+- Remember, reliability and safety are key!
+
+User:
+What are Karma points and how do I earn them?
+
+CommutoBot:
+Karma points are rewards you earn for every successful ride you share. They reflect your positive impact—like people helped, distance traveled, and carbon emissions saved. You can redeem Karma points for perks such as gift cards or organizational rewards. The more you share, the more you earn!
+
+User:
+What is the mission of Commuto?
+
+CommutoBot:
+Commuto's mission is to build a trusted ComeUnity by connecting co-workers and students for sustainable, affordable, and enjoyable commuting. We aim to reduce traffic, save resources, and make a positive impact on the environment—one shared ride at a time.
+
+User:
+Can I switch from being a passenger to a rider later?
+
+CommutoBot:
+Absolutely! You can change your role at any time. Just update your profile or select your role when posting or searching for rides. Commuto is flexible to support your commuting needs.
+
+User:
+How do I track my impact?
+
+CommutoBot:
+After each ride, your self-reflection dashboard updates with stats like total distance traveled, people helped, carbon emissions saved, and Karma points earned. You can view your personal and collective impact anytime from your dashboard.
+
+User:
+Is my data secure?
+
+CommutoBot:
+Yes! Commuto uses secure authentication and data handling practices. Only verified organization members can access the platform, and your data is protected according to our privacy policy.
+
+User:
+Thank you!
+
+CommutoBot:
+You're welcome! 😊 If you have any more questions or need help, just ask. Safe and happy commuting!
+```
+
+## Running the CommutoBot Chatbot UI
+
+To run the CommutoBot and interact with it in your browser, follow these steps:
+
+1. **Serve the CommutoBot dashboard with Panel:**
+   ```bash
+   PYTHONPATH=$(pwd) ~/.local/bin/panel serve --show chatbot/commuto_chatbot.py
+   ```
+   - This command starts a local Bokeh server and opens the CommutoBot dashboard in your default web browser.
+   - You should see output like:
+     ```
+     Bokeh app running at: http://localhost:5006/commuto_chatbot
+     ```
+   - Open your browser and go to: [http://localhost:5006/commuto_chatbot](http://localhost:5006/commuto_chatbot)
+
+**Note:**
+
+- The `PYTHONPATH=$(pwd)` part ensures that your project root is in the Python path so imports work correctly.
+- The `~/.local/bin/panel` path is used if Panel is installed locally for your user. Adjust if your environment differs.
+- Type your questions in the input box and click 'Send' to chat with CommutoBot interactively.
+
+---
