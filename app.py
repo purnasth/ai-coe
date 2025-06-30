@@ -1,22 +1,4 @@
-import openai
-from dotenv import load_dotenv, find_dotenv
-_ = load_dotenv(find_dotenv())
-client = openai.OpenAI()
-
-# List available models
-models = client.models.list()
-print("Available models:")
-for m in models.data:
-    print(m.id)
-
-def get_completion(prompt, model="gpt-4.1-nano"):
-    messages = [{"role": "user", "content": prompt}]
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0,
-    )
-    return response.choices[0].message.content
+from openai_helper import get_completion
 
 # ? Example usage: 1 - Generate a list of made-up book titles
 

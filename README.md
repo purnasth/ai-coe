@@ -181,9 +181,7 @@ Freysa is the world's first adversarial agent game. She is an AI that controls a
 
 - Google Colab is a free cloud-based platform that allows you to write and run Python code in an interactive Jupyter notebook.
 
-
-
-## 3. Open AI 
+## 3. Open AI
 
 ### Two types of Large Language Models (LLMs)
 
@@ -200,48 +198,46 @@ Freysa is the world's first adversarial agent game. She is an AI that controls a
 #### 1. Tactics 1
 
 Use `delimiters` to separate instructions.
+
 - Example: `"""Translate the following text to French: Hello, how are you?"""`
-   Some of the delimiters:
-      - `"""` (triple quotes)
-      - <code>```</code> (triple backticks)
-      - `---` (triple dashes)
-      - `< > ` (angle brackets)
-      - `<tag></tag>` (XML-like tags)
+  Some of the delimiters: - `"""` (triple quotes) - <code>```</code> (triple backticks)
+  - `---`(triple dashes) -`< > `(angle brackets) -`<tag></tag>` (XML-like tags)
 
 `Example:`
 
-```python
+````python
 text = f"""
-You should express what you want a model to do by \ 
-providing instructions that are as clear and \ 
-specific as you can possibly make them. \ 
-This will guide the model towards the desired output, \ 
-and reduce the chances of receiving irrelevant \ 
-or incorrect responses. Don't confuse writing a \ 
-clear prompt with writing a short prompt. \ 
-In many cases, longer prompts provide more clarity \ 
-and context for the model, which can lead to \ 
+You should express what you want a model to do by \
+providing instructions that are as clear and \
+specific as you can possibly make them. \
+This will guide the model towards the desired output, \
+and reduce the chances of receiving irrelevant \
+or incorrect responses. Don't confuse writing a \
+clear prompt with writing a short prompt. \
+In many cases, longer prompts provide more clarity \
+and context for the model, which can lead to \
 more detailed and relevant outputs.
 """
 prompt = f"""
-Summarize the text delimited by triple backticks \ 
+Summarize the text delimited by triple backticks \
 into a single sentence.
 ```{text}```
 """
 response = get_completion(prompt)
 print(response)
-```
+````
 
 #### 2. Tactics 2
+
 Ask for a structured output.
 
 - Use specific formats like JSON or tables to guide the model's response.
 
 ```python
 prompt = f"""
-Generate a list of three made-up book titles along \ 
-with their authors and genres. 
-Provide them in JSON format with the following keys: 
+Generate a list of three made-up book titles along \
+with their authors and genres.
+Provide them in JSON format with the following keys:
 book_id, title, author, genre.
 """
 response = get_completion(prompt)
@@ -252,21 +248,21 @@ print(response)
 
 #### 1. Tactics 1 Specify the steps to complete the task
 
-```python
+````python
 text = f"""
-In a charming village, siblings Jack and Jill set out on \ 
-a quest to fetch water from a hilltop \ 
-well. As they climbed, singing joyfully, misfortune \ 
-struck—Jack tripped on a stone and tumbled \ 
-down the hill, with Jill following suit. \ 
-Though slightly battered, the pair returned home to \ 
-comforting embraces. Despite the mishap, \ 
-their adventurous spirits remained undimmed, and they \ 
+In a charming village, siblings Jack and Jill set out on \
+a quest to fetch water from a hilltop \
+well. As they climbed, singing joyfully, misfortune \
+struck—Jack tripped on a stone and tumbled \
+down the hill, with Jill following suit. \
+Though slightly battered, the pair returned home to \
+comforting embraces. Despite the mishap, \
+their adventurous spirits remained undimmed, and they \
 continued exploring with delight.
 """
 # example 1
 prompt_1 = f"""
-Perform the following actions: 
+Perform the following actions:
 1 - Summarize the following text delimited by triple \
 backticks with 1 sentence.
 2 - Translate the summary into French.
@@ -282,18 +278,18 @@ Text:
 response = get_completion(prompt_1)
 print("Completion for prompt 1:")
 print(response)
-```
+````
 
 Ask for output in a specified format
 
 ```python
 prompt_2 = f"""
-Your task is to perform the following actions: 
-1 - Summarize the following text delimited by 
+Your task is to perform the following actions:
+1 - Summarize the following text delimited by
   <> with 1 sentence.
 2 - Translate the summary into French.
 3 - List each name in the French summary.
-4 - Output a json object that contains the 
+4 - Output a json object that contains the
   following keys: french_summary, num_names.
 
 Use the following format:
@@ -313,6 +309,7 @@ print(response)
 #### Tactic 2: Instruct the model to work out its own solution before rushing to a conclusion
 
 ### Model Limitations: Hallucination
+
 makes statements that sound plausible but are not true or verifiable.
 
 ## Iterative Prompt Development
@@ -321,3 +318,122 @@ makes statements that sound plausible but are not true or verifiable.
 2. **Implementation:** Create the prompt and test it with the model.
 3. **Experimental Results:** Analyze the model's responses.
 4. **Error Analysis:** Identify and address issues to improve the prompt.
+
+## Summarizing and Inferring in Prompt Engineering
+
+### Summarizing
+
+Summarizing is the process of condensing a large amount of text into a shorter version while retaining the main ideas and key points. In prompt engineering, summarization prompts instruct the language model to extract and present the essence of the input text, making information more digestible and actionable.
+
+**Real-life Example:**
+Suppose you have a lengthy customer review and want a quick overview. You can use a prompt like:
+
+```
+Summarize the following review in one sentence: [review text]
+```
+
+The model will return a concise summary, helping you quickly understand the main points without reading the entire review.
+
+**Prompt Engineering Example:**
+
+```python
+prompt = """
+Summarize the following product review in at most 20 words:
+[review text]
+"""
+response = get_completion(prompt)
+print(response)
+```
+
+### Inferring
+
+Inferring is the process of drawing conclusions, making predictions, or extracting implicit information from available data. In prompt engineering, inference prompts guide the model to analyze input and deduce information that may not be explicitly stated.
+
+**Real-life Example:**
+Given a product review, you might want to infer the sentiment:
+
+```
+Is the sentiment of the following review positive, negative, or neutral? [review text]
+```
+
+The model analyzes the text and infers the sentiment, even if it is not directly stated.
+
+**Prompt Engineering Example:**
+
+```python
+prompt = """
+Analyze the following product review and extract the following information:
+1. Sentiment (Positive, Negative, or Neutral)
+2. List of product features mentioned
+3. For each feature, indicate if the sentiment is positive, negative, or neutral
+4. Does the reviewer recommend the product? (Yes/No)
+5. Output the result as a JSON object.
+
+Review: [review text]
+"""
+response = get_completion(prompt)
+print(response)
+```
+
+---
+
+### Quick Summary
+
+- **Summarizing:** Condenses large texts into shorter versions, retaining key points. Useful for overviews and quick understanding.
+- **Inferring:** Draws conclusions or extracts implicit information from data. Useful for sentiment analysis, feature extraction, and structured insights.
+
+See `summarize.py` and `inferring.py` for practical code examples using OpenAI's API.
+
+## Transforming
+
+Transforming is the process of changing the format, structure, or style of input data to achieve a specific output. In prompt engineering, transformation prompts instruct the model to reformat or modify the input in a desired way.
+
+**Real-life Example:**
+Suppose you have a list of names and want to transform it into a comma-separated string.
+
+```python
+prompt = """
+Transform the following list of names into a comma-separated string:
+names = ["Alice", "Bob", "Charlie"]
+"""
+response = get_completion(prompt)
+print(response)
+```
+
+`Note`: See `transformming.py` for practical code examples using OpenAI's API.
+
+## Expanding
+
+Expanding is the process of elaborating on a given input, adding more detail, context, or information. In prompt engineering, expansion prompts guide the model to provide a more comprehensive response based on the initial input.
+
+**Real-life Example:**
+Customize the automated reply to a customer email 
+
+```python
+macbook_sentiment = "positive"
+
+macbook_review = """
+I recently purchased the Apple MacBook Pro 14-inch (2023) with the M3 chip, and it has exceeded my expectations. The display is stunning, performance is lightning fast, and the battery lasts all day. The build quality feels premium, and the keyboard is comfortable to type on. Highly recommended for professionals and students alike!
+"""
+
+macbook_prompt = f"""
+You are a customer service AI assistant.
+Your task is to send an email reply to a valued customer.
+Given the customer email delimited by ```, \
+Generate a reply to thank the customer for their review.
+If the sentiment is positive or neutral, thank them for \
+their review.
+If the sentiment is negative, apologize and suggest that \
+they can reach out to customer service. 
+Make sure to use specific details from the review.
+Write in a concise and professional tone.
+Sign the email as `AI customer agent`.
+Customer review: ```{macbook_review}```
+Review sentiment: {macbook_sentiment}
+"""
+macbook_response = get_completion(macbook_prompt)
+print(macbook_response)
+```
+
+`Note`: See `expanding.py` for practical code examples using OpenAI's API.
+
