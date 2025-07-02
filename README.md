@@ -686,7 +686,7 @@ To run the CommutoBot and interact with it in your browser, follow these steps:
 
 ---
 
-## Summary: 
+## Summary:
 
 - **Principles of Prompting:** Write clear instructions and give the model time to think.
 - **Iterative prompt development:** Involves idea formulation, implementation, experimental results analysis, and error analysis.
@@ -696,3 +696,54 @@ To run the CommutoBot and interact with it in your browser, follow these steps:
 - **Chatbot:** Simulates conversation using prompts to generate responses.
 - **Order Bot:** Example chatbot for ordering pizza with interactive web UI.
 - **CommutoBot:** Example ride-sharing chatbot with interactive web UI.
+
+---
+
+# LangChain
+
+## LangChain Overview
+
+LangChain is a framework designed to simplify the development of applications using large language models (LLMs). It provides tools and abstractions to build complex applications that can interact with LLMs, manage prompts, and handle data.
+
+## Key Features of LangChain
+- **Prompt Management:** Easily create, manage, and reuse prompts for LLMs.
+- **LLM Integration:** Seamlessly integrate with various LLM providers.
+- **Data Handling:** Efficiently manage and process data for LLM applications.
+- **Chain of Thought:** Implement complex reasoning and multi-step workflows.
+- **Memory Management:** Maintain context and state across interactions with LLMs.
+- **Tool Integration:** Connect LLMs with external tools and APIs for enhanced functionality.
+
+## Chat Models, Prompt Templates, and Messages
+
+### What is Chat Models?
+- a chat model interface that takes a list of messages as input and returns a message as an output.
+
+### What is Prompt Templates?
+- translates user input & parameters into instructions for a language model.
+
+### Messages
+- unit of communication in chat models, represents input and output of a chat model.
+  - Each message has: 
+    - **Role**: Eg: "user", "assistant"
+    - **Context**: Eg: text, multimodal data
+    - **Metadata**:
+
+### Tools & Agents
+
+- **Tools**: Think of tools as the "capabilities" or "skills" that an AI can access. LangChain agents uses tools to enhance the model's ability to perform beyond its basic language skills.
+
+- **Agents**: Agents are the "brains" that decide which tools to use and when. They can dynamically choose tools based on the user's input or the context of the conversation.
+
+#### Types of Tools in LangChain
+
+- **API Callers**: Tools that make API calls to external services.
+- **Search Engines**: Tools that perform searches on the web or within a specific dataset.
+- **Execution Environments**: Tools that execute code or scripts.
+- **Custom Tools**: User-defined tools that perform specific tasks based on the application's needs.
+
+#### Types of Agents in LangChain
+
+- **Zero-shot Agent**: Uses a single prompt to determine which tool to use without prior examples.
+- **ReAct Agent**: Combines reasoning and action, allowing the agent to think and act based on the context.
+- **Self-Ask with Search Agent**: Uses a search tool to gather information before making decisions.
+- **Custom Agent**: User-defined agents that can be tailored to specific tasks or workflows.
