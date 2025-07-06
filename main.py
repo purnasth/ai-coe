@@ -47,6 +47,9 @@ def load_onboarding_docs(directory: str = "docs"):
     return loader.load()
 
 
+from people import fetch_people_data, get_person_info
+
+
 docs = load_onboarding_docs()
 
 
@@ -162,6 +165,11 @@ def main():
     print(color_text(title, Fore.CYAN + Style.BRIGHT) if COLORAMA else title)
     print(color_text(border, Fore.CYAN) if COLORAMA else border)
 
+    # Fetch people data once at startup (can be refreshed as needed)
+    people_data = fetch_people_data()
+
+    from people import get_person_info_from_question
+
     while True:
         user_prompt = (
             color_text("\nYou > ", Fore.GREEN + Style.BRIGHT)
@@ -172,6 +180,22 @@ def main():
         if question.strip().lower() == "exit":
             break
 
+        # Use people.py for people-related queries (all logic encapsulated)
+        person_answer = get_person_info_from_question(question, people_data)
+        if person_answer:
+            answer_header = (
+                color_text("\nAssistant:", Fore.MAGENTA + Style.BRIGHT)
+                if COLORAMA
+                else "\nAssistant:"
+            )
+            answer_body = (
+                color_text(person_answer, Fore.YELLOW) if COLORAMA else person_answer
+            )
+            print(answer_header)
+            print(answer_body)
+            continue
+
+        # Otherwise, use the RAG pipeline
         result = qa_chain.invoke({"query": question})
         answer_header = (
             color_text("\nAssistant:", Fore.MAGENTA + Style.BRIGHT)
