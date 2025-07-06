@@ -86,4 +86,78 @@ The summary feedback of all quarters recorded in Pulse is used during the Annual
 
 ---
 
-(For more details, see the full Pulse process documentation or ask specific questions!)
+## (For more details, see the full Pulse process documentation or ask specific questions!)
+
+# Guidelines for Appraiser, Co-Appraiser & Team Manager Changes
+
+## Introduction
+
+This guideline outlines the process for changing the Appraiser, Co-Appraiser, and Team Manager in Vyaguta Pulse.
+
+Changes to the Appraiser and Co-Appraiser are required when an individual onboards or offboards a project/area, or when structural adjustments are made. Team Manager changes are rare but may occur if the current Team Manager leaves or if staffing structure changes.
+
+## Who Can Request a Change?
+
+- **Appraiser/Co-Appraiser:** Both the Appraisee and the Appraiser can request a change if the assigned Appraiser/Co-Appraiser is not correct.
+- **Team Manager:** Only People Management can make this change.
+
+## How to Request Changes
+
+### Requesting Appraiser/Co-Appraiser Change as an Appraisee
+
+**Option 1: Via Individual Profile Summary**
+
+1. Go to People > Leapfrogger > Individual Profile Summary.
+2. In the Allocation section, click 'Request for Appraisers Change'.
+3. Select the new Appraiser/Co-Appraiser from the drop-down menu.
+4. Add the reason for the change.
+5. Click 'Request for Change' and then 'Save'.
+6. Project Manager, Team Manager, and current Appraiser/Co-Appraiser are notified by email. Once reviewed and processed, you’ll get a confirmation email and see the update in your Vyaguta profile.
+
+**Option 2: Via Vyaguta Dashboard**
+
+1. Go to Vyaguta Dashboard > My Allocation.
+2. Hover over the Appraiser/Co-Appraiser section and click ‘Request for Appraiser Change’ or ‘Co-Appraiser Change’.
+3. Choose the new Appraiser/Co-Appraiser from the drop-down list.
+4. Add the reason for the change.
+5. Click ‘Request for Change’.
+6. Project Manager, Team Manager, and current Appraiser/Co-Appraiser are notified by email. Once reviewed and processed, you’ll get a confirmation email and see the update in Vyaguta.
+
+### Changing an Appraisee’s Appraiser or Co-Appraiser (as an Appraiser)
+
+1. Go to Vyaguta Dashboard > My Teams.
+2. Hover over the team member and click ‘Change Appraiser’.
+3. Select a new Appraiser/Co-Appraiser from the drop-down list.
+4. Write the reason for the change.
+5. Click on ‘Request for change’.
+
+### For Bulk Changes (More than 10 Appraisees)
+
+- Email peoplemanagement@lftechnology.com with a Google Sheet containing:
+  - Appraisee’s email
+  - Current project & area
+  - Current and new Appraiser’s email
+  - Transition date
+- People Management will review and process your request within 5 working days. Once the change is made, you’ll receive a confirmation email and see the update on Vyaguta.
+
+### Changing a Team Manager
+
+**For Individual Changes:**
+
+- Email peoplemanagement@lftechnology.com with:
+  - Team Member’s email
+  - New Team Manager’s email
+  - Transition date
+
+**For Bulk Changes (More Than 5 Members):**
+
+- Email peoplemanagement@lftechnology.com with a Google Sheet containing:
+  - Team Member’s email
+  - Current Team Manager’s email
+  - New Team Manager’s email
+  - Transition date
+- People Management will review and process your request within 5 working days. Once the change is made, you’ll receive a confirmation email and see the update on Vyaguta.
+
+## Need Help or Follow-Up?
+
+If your request is not acknowledged within 3 working days, please follow up with your Project Manager or Appraiser or contact peoplemanagement@lftechnology.com for support.

@@ -76,7 +76,16 @@ def get_prompt_template() -> PromptTemplate:
     """
     return PromptTemplate(
         template="""
-You are Vyaguta's onboarding assistant. Use the provided context to answer user questions about Vyaguta's modules, features, and onboarding procedures. If unsure, say you don't know.
+You are Vyaguta's assistant. Use the provided context to answer user questions about Vyaguta's modules, features, onboarding procedures, tools, policies, and any information available about Vyaguta and Leapfrog.
+
+If the user asks about the creator or author of Vyaguta Assistant Chatbot, answer with:
+"Vyaguta Assistant Chatbot was created by Purna Bahadur Shrestha, Associate Software Engineer at Leapfrog Technology. You can reach him at purnashrestha@lftechnology.com."
+
+If you are unsure or cannot find the answer in the provided context, politely say you are not sure or do not know. Do not make up answers. If you have already told the user you do not know for a similar question before, then suggest they visit these official resources for more information:
+- Vyaguta Portal: https://vyaguta.lftechnology.com/
+- Vyaguta Wiki: https://lftechnology.atlassian.net/wiki/spaces/VYAGUTA/overview
+
+Always be helpful, concise, and polite. If the answer is not in the context, respond with a polite message such as "I'm not sure about that based on the current information." Only after repeated uncertainty (i.e., if you have already said you do not know), provide the above links.
 
 Context:
 {context}
@@ -130,11 +139,13 @@ qa_chain = build_qa_chain(llm, retriever, prompt)
 
 def main():
     """
-    Runs the Vyaguta Onboarding Assistant Chatbot in a terminal chat loop.
+    Runs the Vyaguta Assistant Chatbot in a terminal chat loop.
     """
     import sys
+
     try:
         from colorama import init, Fore, Style
+
         init(autoreset=True)
         COLORAMA = True
     except ImportError:
@@ -145,26 +156,38 @@ def main():
             return text
         return color + text + Style.RESET_ALL
 
-    title = "Vyaguta Onboarding Assistant Chatbot (type 'exit' to quit)"
+    title = "Vyaguta Assistant Chatbot (type 'exit' to quit)"
     border = "=" * len(title)
     print(color_text(border, Fore.CYAN) if COLORAMA else border)
     print(color_text(title, Fore.CYAN + Style.BRIGHT) if COLORAMA else title)
     print(color_text(border, Fore.CYAN) if COLORAMA else border)
 
     while True:
-        user_prompt = color_text("\nYou > ", Fore.GREEN + Style.BRIGHT) if COLORAMA else "\nYou > "
+        user_prompt = (
+            color_text("\nYou > ", Fore.GREEN + Style.BRIGHT)
+            if COLORAMA
+            else "\nYou > "
+        )
         question = input(user_prompt)
         if question.strip().lower() == "exit":
             break
 
         result = qa_chain.invoke({"query": question})
-        answer_header = color_text("\nAssistant:", Fore.MAGENTA + Style.BRIGHT) if COLORAMA else "\nAssistant:"
-        answer_body = color_text(result["result"], Fore.YELLOW) if COLORAMA else result["result"]
+        answer_header = (
+            color_text("\nAssistant:", Fore.MAGENTA + Style.BRIGHT)
+            if COLORAMA
+            else "\nAssistant:"
+        )
+        answer_body = (
+            color_text(result["result"], Fore.YELLOW) if COLORAMA else result["result"]
+        )
         print(answer_header)
         print(answer_body)
 
     if not COLORAMA:
-        print("\nFor a more colorful experience, install the 'colorama' package: pip install colorama")
+        print(
+            "\nFor a more colorful experience, install the 'colorama' package: pip install colorama"
+        )
 
 
 if __name__ == "__main__":
