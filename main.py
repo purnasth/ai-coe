@@ -1,5 +1,5 @@
 """
-Vyaguta Onboarding Assistant Chatbot
+Vyaguta Assistant Chatbot
 
 This script implements a Retrieval-Augmented Generation (RAG) chatbot for onboarding using LangChain, OpenAI, and prompt engineering.
 
@@ -132,14 +132,39 @@ def main():
     """
     Runs the Vyaguta Onboarding Assistant Chatbot in a terminal chat loop.
     """
-    print('Vyaguta Onboarding Assistant Chatbot (type "exit" to quit)')
+    import sys
+    try:
+        from colorama import init, Fore, Style
+        init(autoreset=True)
+        COLORAMA = True
+    except ImportError:
+        COLORAMA = False
+
+    def color_text(text, color):
+        if not COLORAMA:
+            return text
+        return color + text + Style.RESET_ALL
+
+    title = "Vyaguta Onboarding Assistant Chatbot (type 'exit' to quit)"
+    border = "=" * len(title)
+    print(color_text(border, Fore.CYAN) if COLORAMA else border)
+    print(color_text(title, Fore.CYAN + Style.BRIGHT) if COLORAMA else title)
+    print(color_text(border, Fore.CYAN) if COLORAMA else border)
+
     while True:
-        question = input("\nAsk a question: ")
+        user_prompt = color_text("\nYou > ", Fore.GREEN + Style.BRIGHT) if COLORAMA else "\nYou > "
+        question = input(user_prompt)
         if question.strip().lower() == "exit":
             break
 
         result = qa_chain.invoke({"query": question})
-        print("\nAnswer:", result["result"])
+        answer_header = color_text("\nAssistant:", Fore.MAGENTA + Style.BRIGHT) if COLORAMA else "\nAssistant:"
+        answer_body = color_text(result["result"], Fore.YELLOW) if COLORAMA else result["result"]
+        print(answer_header)
+        print(answer_body)
+
+    if not COLORAMA:
+        print("\nFor a more colorful experience, install the 'colorama' package: pip install colorama")
 
 
 if __name__ == "__main__":
