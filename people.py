@@ -1,4 +1,17 @@
 def get_person_info_from_question(question, people_data):
+
+    import re
+
+    # --- API endpoint explanations ---
+    api_patterns = [r"vyaguta\.lftechnology\.com/api/core/users", r"/api/core/users"]
+    for pat in api_patterns:
+        if re.search(pat, question):
+            return (
+                "The API endpoint https://vyaguta.lftechnology.com/api/core/users provides a list of Leapfrog employees (Leapfroggers) with details such as first name, last name, email, mobile phone, department, and designation. "
+                "It is used to fetch people data for search, lookup, and onboarding features in Vyaguta and related tools. "
+                "The endpoint supports pagination and returns structured user information for internal use."
+            )
+
     # --- Helper for stemming and synonyms ---
     def normalize_word(word):
         # Simple stemming: remove common suffixes
@@ -116,18 +129,63 @@ def get_person_info_from_question(question, people_data):
                 desig_area = desig_area.replace(noise, "")
             desig_area = desig_area.strip()
             # Remove generic/stop words from query
-            stopwords = set([
-                "people", "person", "persons", "who", "how", "many", "number", "of", "the", "are", "is", "in", "at", "as", "working", "work", "do", "there", "currently", "now", "presently", "list", "all", "on", "for", "with", "by", "to", "from", "and", "or", "a", "an", "team", "members", "member"
-            ])
-            query_words = [normalize_word(w) for w in re.split(r"[, ]+", desig_area) if w and normalize_word(w) not in stopwords]
+            stopwords = set(
+                [
+                    "people",
+                    "person",
+                    "persons",
+                    "who",
+                    "how",
+                    "many",
+                    "number",
+                    "of",
+                    "the",
+                    "are",
+                    "is",
+                    "in",
+                    "at",
+                    "as",
+                    "working",
+                    "work",
+                    "do",
+                    "there",
+                    "currently",
+                    "now",
+                    "presently",
+                    "list",
+                    "all",
+                    "on",
+                    "for",
+                    "with",
+                    "by",
+                    "to",
+                    "from",
+                    "and",
+                    "or",
+                    "a",
+                    "an",
+                    "team",
+                    "members",
+                    "member",
+                ]
+            )
+            query_words = [
+                normalize_word(w)
+                for w in re.split(r"[, ]+", desig_area)
+                if w and normalize_word(w) not in stopwords
+            ]
             matches = []
             for p in people_data:
                 designation = p.get("designation", {}).get("name", "").lower()
                 area = p.get("designation", {}).get("area", {}).get("name", "").lower()
                 combined = f"{designation}, {area}" if area else designation
-                combined_words = [normalize_word(w) for w in combined.replace(",", " ").split()]
+                combined_words = [
+                    normalize_word(w) for w in combined.replace(",", " ").split()
+                ]
                 # Fuzzy/partial match: any query word in any combined word (or vice versa)
-                if any(qw in cw or cw in qw for qw in query_words for cw in combined_words):
+                if any(
+                    qw in cw or cw in qw for qw in query_words for cw in combined_words
+                ):
                     matches.append(p)
         else:
             name_match = re.search(r"(?:who is|contact|about) ([\w .'-]+)", lower_q)
