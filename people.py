@@ -1,4 +1,42 @@
 def get_person_info_from_question(question, people_data):
+    # --- Helper for stemming and synonyms ---
+    def normalize_word(word):
+        # Simple stemming: remove common suffixes
+        for suf in ["ers", "ies", "ers", "ors", "ists", "ings", "ments", "ships", "s"]:
+            if word.endswith(suf) and len(word) > len(suf) + 2:
+                word = word[: -len(suf)]
+                break
+        # Synonym/alias mapping
+        synonyms = {
+            "developer": "develop",
+            "development": "develop",
+            "dev": "develop",
+            "engineer": "engineer",
+            "engineering": "engineer",
+            "designer": "design",
+            "design": "design",
+            "qa": "qa",
+            "quality": "qa",
+            "product": "product",
+            "manager": "manager",
+            "lead": "lead",
+            "analyst": "analyst",
+            "associate": "associate",
+            "intern": "intern",
+            "director": "director",
+            "secops": "secops",
+            "sysops": "sysops",
+            "frontend": "front",
+            "front-end": "front",
+            "backend": "back",
+            "back-end": "back",
+            "devops": "devop",
+            "ai": "ai",
+            "data": "data",
+        }
+        w = word.lower()
+        return synonyms.get(w, w)
+
     """
     Parses a question, extracts a name or email, and returns formatted info if found.
     Args:
@@ -11,74 +49,117 @@ def get_person_info_from_question(question, people_data):
     import re
 
     lower_q = question.strip().lower()
-    # Try to extract email
-    email_match = re.search(r"[\w.]+@[\w.]+", lower_q)
-    if email_match:
-        search_term = email_match.group(0)
-        matches = [p for p in people_data if p.get("email", "").lower() == search_term]
-    # Try to extract phone number
-    elif re.search(r"\d{7,}", lower_q):
-        # Accept numbers with or without +, spaces, dashes
-        phone_match = re.search(r"(\+?\d[\d\s-]{6,})", lower_q)
-        if phone_match:
-            phone = phone_match.group(1).replace(" ", "").replace("-", "")
+    # Heuristic: Only trigger people search if question contains likely people-related keywords or patterns
+    # (name, email, phone, designation, area, or explicit people query)
+    # Also match queries like "how many developers", "number of designers", etc.
+    designation_query = None
+    general_desig_patterns = [
+        r"how many ([\w .,&-]+?)s?(?: (?:are|do|in|at|currently|now|presently|working|work|exist|there|in leapfrog|at leapfrog|in the company|in organization|in org|in team|right now))?\??$",
+        r"number of ([\w .,&-]+?)s?(?: (?:are|do|in|at|currently|now|presently|working|work|exist|there|in leapfrog|at leapfrog|in the company|in organization|in org|in team|right now))?\??$",
+        r"who are the ([\w .,&-]+?)s?(?: (?:in|at|currently|now|presently|working|work|exist|there|in leapfrog|at leapfrog|in the company|in organization|in org|in team|right now))?\??$",
+        r"list of ([\w .,&-]+?)s?(?: (?:in|at|currently|now|presently|working|work|exist|there|in leapfrog|at leapfrog|in the company|in organization|in org|in team|right now))?\??$",
+    ]
+    for pat in general_desig_patterns:
+        m = re.search(pat, lower_q)
+        if m:
+            designation_query = m.group(1).strip()
+            break
+
+    if (
+        re.search(r"[\w.]+@[\w.]+", lower_q)
+        or re.search(r"\d{7,}", lower_q)
+        or "designation" in lower_q
+        or "working as" in lower_q
+        or re.search(r"who is|contact|about", lower_q)
+        or designation_query
+    ):
+        # Try to extract email
+        email_match = re.search(r"[\w.]+@[\w.]+", lower_q)
+        if email_match:
+            search_term = email_match.group(0)
             matches = [
-                p
-                for p in people_data
-                if p.get("mobilePhone", "").replace(" ", "").replace("-", "") == phone
+                p for p in people_data if p.get("email", "").lower() == search_term
             ]
-        else:
-            matches = []
-    # Try to extract designation/area
-    elif "working as" in lower_q or "designation" in lower_q:
-        # Extract after 'working as' or 'designation', allow quoted or unquoted
-        desig_match = re.search(
-            r'(?:working as|designation)\s*(?:an?|the)?\s*"?([\w .,&-]+)"?', lower_q
-        )
-        if desig_match:
-            desig_area = desig_match.group(1).strip().lower()
+        # Try to extract phone number
+        elif re.search(r"\d{7,}", lower_q):
+            phone_match = re.search(r"(\+?\d[\d\s-]{6,})", lower_q)
+            if phone_match:
+                phone = phone_match.group(1).replace(" ", "").replace("-", "")
+                matches = [
+                    p
+                    for p in people_data
+                    if p.get("mobilePhone", "").replace(" ", "").replace("-", "")
+                    == phone
+                ]
+            else:
+                matches = []
+        # Try to extract designation/area
+        elif "working as" in lower_q or "designation" in lower_q or designation_query:
+            if designation_query:
+                desig_area = designation_query.lower()
+            else:
+                desig_match = re.search(
+                    r'(?:working as|designation)\s*(?:an?|the)?\s*"?([\w .,&-]+)"?',
+                    lower_q,
+                )
+                desig_area = desig_match.group(1).strip().lower() if desig_match else ""
+            # Remove company references and temporal phrases
+            for noise in [
+                "in leapfrog",
+                "at leapfrog",
+                "leapfrog",
+                "right now",
+                "currently",
+                "now",
+                "presently",
+            ]:
+                desig_area = desig_area.replace(noise, "")
+            desig_area = desig_area.strip()
+            # Remove generic/stop words from query
+            stopwords = set([
+                "people", "person", "persons", "who", "how", "many", "number", "of", "the", "are", "is", "in", "at", "as", "working", "work", "do", "there", "currently", "now", "presently", "list", "all", "on", "for", "with", "by", "to", "from", "and", "or", "a", "an", "team", "members", "member"
+            ])
+            query_words = [normalize_word(w) for w in re.split(r"[, ]+", desig_area) if w and normalize_word(w) not in stopwords]
             matches = []
             for p in people_data:
                 designation = p.get("designation", {}).get("name", "").lower()
                 area = p.get("designation", {}).get("area", {}).get("name", "").lower()
-                # Fuzzy match: require all words in query to be present in designation+area
                 combined = f"{designation}, {area}" if area else designation
-                query_words = [w for w in re.split(r"[, ]+", desig_area) if w]
-                combined_words = combined.replace(",", " ").split()
-                if all(any(qw in cw for cw in combined_words) for qw in query_words):
+                combined_words = [normalize_word(w) for w in combined.replace(",", " ").split()]
+                # Fuzzy/partial match: any query word in any combined word (or vice versa)
+                if any(qw in cw or cw in qw for qw in query_words for cw in combined_words):
                     matches.append(p)
         else:
-            matches = []
-    else:
-        # Default: name or fallback
-        name_match = re.search(r"(?:who is|contact|about) ([\w .'-]+)", lower_q)
-        search_term = name_match.group(1).strip() if name_match else lower_q.split()[-1]
-        matches = get_people_matches(search_term, people_data)
-    if not matches:
-        # Prompt engineering: friendly not found message
-        return "Sorry, I couldn't find any matching person. Please check the spelling or try a different name, email, phone, or designation."
-    # Show number of results if more than one
-    results = []
-    if len(matches) > 1:
-        results.append(
-            f"\033[96m\n================= {len(matches)} result{'s' if len(matches) > 1 else ''} found =================\033[0m\n"
-        )
-    for idx, person_info in enumerate(matches, 1):
-        designation = person_info.get("designation", {}).get("name", "N/A")
-        area = person_info.get("designation", {}).get("area", {}).get("name", None)
-        designation_area = f"{designation}, {area}" if area else designation
-        info_lines = [
-            f"\033[92m[{idx}] {person_info.get('firstName', '').title()} {person_info.get('middleName', '') or ''}{person_info.get('lastName', '').title()}\033[0m",
-            f"   \033[94mEmail:\033[0m {person_info.get('email', 'N/A')}",
-            f"   \033[94mMobile:\033[0m {person_info.get('mobilePhone', 'N/A')}",
-            f"   \033[94mDepartment:\033[0m {person_info.get('department', {}).get('name', 'N/A')}",
-            f"   \033[94mDesignation:\033[0m {designation_area}",
-            f"   \033[93mMore info:\033[0m https://vyaguta.lftechnology.com/leapfroggers/{person_info.get('id', '')}",
-        ]
-        results.append("\n".join(info_lines))
-        if len(matches) > 1 and idx != len(matches):
-            results.append("\033[90m" + ("-" * 50) + "\033[0m")
-    return "\n".join(results)
+            name_match = re.search(r"(?:who is|contact|about) ([\w .'-]+)", lower_q)
+            search_term = (
+                name_match.group(1).strip() if name_match else lower_q.split()[-1]
+            )
+            matches = get_people_matches(search_term, people_data)
+        if not matches:
+            return None
+        results = []
+        if len(matches) > 1:
+            results.append(
+                f"\033[96m\n================= {len(matches)} result{'s' if len(matches) > 1 else ''} found =================\033[0m\n"
+            )
+        for idx, person_info in enumerate(matches, 1):
+            designation = person_info.get("designation", {}).get("name", "N/A")
+            area = person_info.get("designation", {}).get("area", {}).get("name", None)
+            designation_area = f"{designation}, {area}" if area else designation
+            info_lines = [
+                f"\033[92m[{idx}] {person_info.get('firstName', '').title()} {person_info.get('middleName', '') or ''}{person_info.get('lastName', '').title()}\033[0m",
+                f"   \033[94mEmail:\033[0m {person_info.get('email', 'N/A')}",
+                f"   \033[94mMobile:\033[0m {person_info.get('mobilePhone', 'N/A')}",
+                f"   \033[94mDepartment:\033[0m {person_info.get('department', {}).get('name', 'N/A')}",
+                f"   \033[94mDesignation:\033[0m {designation_area}",
+                f"   \033[93mMore info:\033[0m https://vyaguta.lftechnology.com/leapfroggers/{person_info.get('id', '')}",
+            ]
+            results.append("\n".join(info_lines))
+            if len(matches) > 1 and idx != len(matches):
+                results.append("\033[90m" + ("-" * 50) + "\033[0m")
+        return "\n".join(results)
+    # If not a people-related query, return None so main.py can use RAG/LLM
+    return None
 
 
 def get_people_matches(name_or_email, people_data):
