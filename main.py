@@ -73,7 +73,7 @@ def load_onboarding_docs(directory: str = "docs"):
     return all_docs
 
 
-from people import fetch_people_data, get_person_info
+from people import fetch_people_data, get_person_info_from_question, is_people_query
 
 
 docs = load_onboarding_docs()
@@ -109,7 +109,7 @@ retriever = create_retriever(docs)
 
 def get_prompt_template() -> PromptTemplate:
     """
-    Returns a prompt template for the onboarding assistant, instructing the LLM to quote or summarize exact steps, rules, or lists from the context.
+    Returns a prompt template for the onboarding assistant, instructing the LLM to quote or summarize exact steps, rules, or lists from the markdown context.
 
     Returns:
         PromptTemplate: The prompt template for the LLM.
@@ -253,7 +253,7 @@ def answer_promotion_query(question: str, promotions: list) -> str | None:
     Answers fact-based promotion queries deterministically from parsed data.
     Returns answer string if matched, else None.
     """
-    q = question.lower()
+    q = question.lower().strip()
     # 1. Did <name> get promoted in Q3 2025?
     m = re.match(r"did ([a-zA-Z .'-]+) got? promoted( in q3 2025)?\??", q)
     if m:
@@ -263,7 +263,7 @@ def answer_promotion_query(question: str, promotions: list) -> str | None:
             if len(found) == 1:
                 p = found[0]
                 return f"Yes, {p['name']} was promoted from {p['from']} to {p['to']} in {p['department']} in Q3 2025."
-            else:
+            elif ambiguous and len(found) > 1:
                 lines = [
                     f"[{i+1}] {p['name']}: {p['from']} → {p['to']} in {p['department']} in Q3 2025."
                     for i, p in enumerate(found)
@@ -352,8 +352,6 @@ def main():
     # Fetch people data once at startup (can be refreshed as needed)
     people_data = fetch_people_data()
 
-    from people import get_person_info_from_question
-
     while True:
         user_prompt = (
             color_text("\nYou > ", Fore.GREEN + Style.BRIGHT)
@@ -380,19 +378,22 @@ def main():
             continue  # Never fall back to LLM for promotion queries!
 
         # Use people.py for people-related queries (all logic encapsulated)
-        person_answer = get_person_info_from_question(question, people_data)
-        if person_answer is not None:
-            answer_header = (
-                color_text("\nAssistant:", Fore.MAGENTA + Style.BRIGHT)
-                if COLORAMA
-                else "\nAssistant:"
-            )
-            answer_body = (
-                color_text(person_answer, Fore.YELLOW) if COLORAMA else person_answer
-            )
-            print(answer_header)
-            print(answer_body)
-            continue
+        if is_people_query(question):
+            person_answer = get_person_info_from_question(question, people_data)
+            if person_answer is not None:
+                answer_header = (
+                    color_text("\nAssistant:", Fore.MAGENTA + Style.BRIGHT)
+                    if COLORAMA
+                    else "\nAssistant:"
+                )
+                answer_body = (
+                    color_text(person_answer, Fore.YELLOW)
+                    if COLORAMA
+                    else person_answer
+                )
+                print(answer_header)
+                print(answer_body)
+                continue
 
         # Otherwise, use the RAG pipeline first
         result = qa_chain.invoke({"query": question})

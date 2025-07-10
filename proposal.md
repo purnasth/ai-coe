@@ -22,7 +22,9 @@ This assistant will significantly reduce onboarding time, empower users to self-
 
 ## Architecture & Workflow
 
-The Vyaguta Onboarding Assistant Chatbot uses:
+The Vyaguta Onboarding Assistant Chatbot uses a sophisticated combination of modern AI technologies to provide intelligent, context-aware responses to user queries about Vyaguta's ERP system.
+
+### Core Components:
 
 - **LLM (Large Language Model):** For natural language understanding and response generation.
 - **RAG (Retrieval-Augmented Generation):** To fetch relevant information from internal documentation.
@@ -41,6 +43,132 @@ flowchart TD
     F --> G[Chatbot Response]
     B --> F
 ```
+
+### Detailed Workflow Explanation:
+
+1. **User Query Processing**: When a user asks a question like "How do I request leave in Vyaguta?", the system begins processing.
+
+2. **LangChain Orchestration**: Acts as the central coordinator, managing the flow between different components and deciding whether to retrieve additional context or directly use the LLM.
+
+3. **RAG Document Retrieval**: The system searches through relevant documentation to find the most appropriate context for the user's question.
+
+4. **LLM Response Generation**: Using the retrieved context and the original query, the LLM generates a comprehensive, accurate response.
+
+5. **Final Response Delivery**: The chatbot presents the answer in a user-friendly format.
+
+---
+
+## Technical Explanation
+
+### Key Technical Components:
+
+#### **1. Large Language Model (LLM)**
+
+- **Definition**: A deep learning model trained on vast amounts of text data to understand and generate human-like text
+- **Role**: Processes natural language queries and generates contextually appropriate responses
+- **Implementation**: OpenAI GPT models accessed via API
+- **Technical Details**:
+  - Handles complex natural language understanding (NLU)
+  - Generates coherent, context-aware responses
+  - Maintains conversation context across multiple interactions
+
+**Example**: When a user asks "What's the difference between OKR and KPI?", the LLM processes the natural language, understands the comparative nature of the question, and generates a structured explanation.
+
+#### **2. Retrieval-Augmented Generation (RAG)**
+
+- **Definition**: A technique that combines information retrieval with text generation to provide more accurate, factual responses
+- **Role**: Fetches relevant documentation snippets before generating responses
+- **Implementation**: Vector embeddings for semantic search + traditional keyword matching
+- **Technical Details**:
+  - Documents are converted to vector embeddings
+  - User queries are embedded and compared against document vectors
+  - Most relevant documents are retrieved and passed to the LLM
+  - Reduces hallucination by grounding responses in actual documentation
+
+**Example**: When asked about "leave policies", RAG searches through HR documents, finds relevant policy sections, and provides this context to the LLM for accurate response generation.
+
+#### **3. LangChain Framework**
+
+- **Definition**: A framework for developing applications with LLMs by chaining together different components
+- **Role**: Orchestrates the entire workflow from query processing to response generation
+- **Implementation**: Python-based framework with modular components
+- **Technical Details**:
+  - Manages prompt templates and response formatting
+  - Handles memory and conversation context
+  - Integrates various tools and data sources
+  - Provides error handling and fallback mechanisms
+
+**Example**: LangChain manages the flow: User query → Document retrieval → Context injection → LLM call → Response formatting → User delivery.
+
+#### **4. Vector Database & Semantic Search**
+
+- **Definition**: Database optimized for storing and querying high-dimensional vectors
+- **Role**: Enables fast, semantic similarity searches across documentation
+- **Implementation**: PostgreSQL with pgvector extension or dedicated vector databases
+- **Technical Details**:
+  - Documents chunked into smaller segments
+  - Each chunk converted to vector embeddings
+  - Cosine similarity for finding relevant content
+  - Hybrid search combining semantic and keyword matching
+
+---
+
+## Non-Technical Explanation
+
+### How It Works in Simple Terms:
+
+#### **1. Smart Reading Assistant (LLM)**
+
+Think of this as a highly intelligent assistant who has read thousands of books and can understand and explain complex topics in simple language. When you ask a question, it understands what you're really asking for and provides helpful answers.
+
+**Real-world analogy**: Like having a knowledgeable colleague who can explain any Vyaguta feature in a way that makes sense to you.
+
+**Example**: You ask "How do I check my attendance?" and the assistant understands you want step-by-step instructions for accessing attendance records in Vyaguta.
+
+#### **2. Smart Search System (RAG)**
+
+This is like having a super-fast librarian who can instantly find the exact page in any manual that answers your question. Instead of you having to search through hundreds of pages, it finds the relevant information in seconds.
+
+**Real-world analogy**: Like having a personal research assistant who knows exactly where to find any information about Vyaguta procedures.
+
+**Example**: When you ask about "expense reimbursement", the system quickly finds the relevant policy documents and procedure guides, then uses this information to give you accurate instructions.
+
+#### **3. Workflow Coordinator (LangChain)**
+
+This acts like a project manager who ensures everything works smoothly together. It decides when to search for information, how to combine different pieces of information, and how to present the final answer.
+
+**Real-world analogy**: Like having a personal assistant who coordinates between different departments to get you the complete answer you need.
+
+**Example**: When you ask a complex question like "What's the process for requesting vacation and how does it affect my OKR goals?", the coordinator ensures the system finds information about both vacation policies and OKR procedures, then combines them into one comprehensive answer.
+
+### User Experience Examples:
+
+#### **Scenario 1: New Employee Onboarding**
+
+- **User**: "I'm new here. How do I set up my Vyaguta profile?"
+- **System Process**:
+  1. Understands this is an onboarding question
+  2. Searches for profile setup documentation
+  3. Generates step-by-step instructions
+- **Response**: Detailed walkthrough with screenshots and tips
+
+#### **Scenario 2: Complex Policy Question**
+
+- **User**: "What happens to my accumulated leave when I change teams?"
+- **System Process**:
+  1. Searches HR policies and team transfer procedures
+  2. Finds relevant policy sections
+  3. Combines information from multiple sources
+- **Response**: Clear explanation of leave transfer policies with specific examples
+
+#### **Scenario 3: Feature Discovery**
+
+- **User**: "I heard about something called Pulse. What is it?"
+- **System Process**:
+  1. Identifies this as a feature explanation request
+  2. Retrieves Pulse module documentation
+  3. Generates user-friendly explanation
+- **Response**: Overview of Pulse features with practical use cases
 
 [Edit or view this diagram online](https://mermaid.live/)
 
