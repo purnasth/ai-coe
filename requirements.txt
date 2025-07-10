@@ -1,3 +1,6 @@
+requests
+markdownify
+python-dotenv
 
 langchain>=0.2.0
 openai>=1.30.1

@@ -1,3 +1,6 @@
+# This is a rollback version of the Vyaguta Assistant Chatbot script
+# It does not include the Confluence loader and uses a simpler document loading approach.
+
 """
 Vyaguta Assistant Chatbot
 
@@ -41,34 +44,35 @@ from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain.text_splitter import MarkdownHeaderTextSplitter
 
 
-def load_onboarding_docs(directories=None):
+def load_onboarding_docs(directory: str = "docs"):
     """
-    Loads onboarding documentation from the specified directories, chunked by headings and lists for fine-grained retrieval.
+    Loads onboarding documentation from the specified directory, chunked by headings and lists for fine-grained retrieval.
+
     Args:
-        directories (list or None): List of directories containing onboarding docs. If None, defaults to ["docs", "docs-confluence"].
+        directory (str): Directory containing onboarding docs.
     Returns:
         list: List of loaded and chunked documents.
     """
     import glob
 
-    if directories is None:
-        directories = ["docs", "docs-confluence"]
     all_docs = []
-    for directory in directories:
-        for file in glob.glob(f"{directory}/*.md"):
-            loader = UnstructuredMarkdownLoader(file)
-            doc = loader.load()
-            splitter = MarkdownHeaderTextSplitter(
-                headers_to_split_on=[
-                    ("#", "Header 1"),
-                    ("##", "Header 2"),
-                    ("###", "Header 3"),
-                    ("####", "Header 4"),
-                ]
-            )
-            chunks = splitter.split_text(doc[0].page_content)
-            for chunk in chunks:
-                all_docs.append(chunk)
+    for file in glob.glob(f"{directory}/*.md"):
+        # Use UnstructuredMarkdownLoader for robust parsing
+        loader = UnstructuredMarkdownLoader(file)
+        doc = loader.load()
+        # Use correct tuple format for headers_to_split_on
+        splitter = MarkdownHeaderTextSplitter(
+            headers_to_split_on=[
+                ("#", "Header 1"),
+                ("##", "Header 2"),
+                ("###", "Header 3"),
+                ("####", "Header 4"),
+            ]
+        )
+        chunks = splitter.split_text(doc[0].page_content)
+        for chunk in chunks:
+            # Store heading context with each chunk
+            all_docs.append(chunk)
     return all_docs
 
 

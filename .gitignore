@@ -1,4 +1,10 @@
+# Ignore auto-generated Confluence markdown files
+docs-confluence/
+
+# Ignore .env file
 .env
+
+# Ignore Python cache files
 __pycache__/
 __init__.py
 
