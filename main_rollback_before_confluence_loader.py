@@ -239,15 +239,7 @@ def find_person_promotions(name_query, promotions):
     ]
     if token_matches:
         return token_matches, True if len(token_matches) > 1 else False
-    # 4. Fuzzy match (Levenshtein distance <= 1 for any part of the name)
-    fuzzy = []
-    for p in promotions:
-        for part in p["name"].lower().split():
-            if difflib.SequenceMatcher(None, nq, part).ratio() > 0.8:
-                fuzzy.append(p)
-                break
-    if fuzzy:
-        return fuzzy, True if len(fuzzy) > 1 else False
+    # If no match, let RAG handle the query
     return [], False
 
 

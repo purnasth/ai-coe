@@ -1,3 +1,7 @@
+
+# TODO Case for multiple people with the same name
+# TODO Data not trained for handling more detailed people queries
+
 import requests
 import re
 
@@ -85,6 +89,24 @@ def fetch_people_data():
     return all_people
 
 
+# --- Generate RAG-friendly people docs ---
+def generate_people_docs(people_data):
+    """
+    Converts people data into text chunks for RAG ingestion.
+    Each person becomes a short summary string.
+    """
+    docs = []
+    for person in people_data:
+        name = f"{person.get('firstName', '')} {person.get('middleName', '') or ''} {person.get('lastName', '')}".strip()
+        designation = person.get("designation", {}).get("name", "N/A")
+        department = person.get("department", {}).get("name", "N/A")
+        email = person.get("email", "N/A")
+        mobile = person.get("mobilePhone", "N/A")
+        summary = f"{name}: {designation}, {department}, {email}, {mobile}"
+        docs.append(summary)
+    return docs
+
+
 # --- Fetch detailed info for a person by ID ---
 def fetch_person_details_by_id(person_id):
     url = f"https://vyaguta.lftechnology.com/api/core/users/{person_id}"
@@ -109,46 +131,13 @@ def fetch_person_details_by_id(person_id):
 
 # --- Fuzzy/partial matching for people ---
 def get_people_matches(name_or_email, people_data):
-    import urllib.parse
-
-    def normalize(s):
-        return re.sub(r"\s+", " ", s.strip().lower())
-
-    name_or_email = normalize(name_or_email)
-    encoded_name = urllib.parse.quote_plus(name_or_email)
-    matches = []
-    for person in people_data:
-        if person.get("email", "").lower() == name_or_email:
-            matches.append(person)
-    for person in people_data:
-        full_name = f"{person.get('firstName', '')} {person.get('middleName', '') or ''} {person.get('lastName', '')}"
-        full_name_norm = normalize(full_name)
-        full_name_nospaces = full_name_norm.replace(" ", "")
-        full_name_no_middle = (
-            f"{person.get('firstName', '')} {person.get('lastName', '')}"
-        )
-        full_name_no_middle_norm = normalize(full_name_no_middle)
-        if (
-            name_or_email == full_name_norm
-            or name_or_email == full_name_nospaces
-            or name_or_email == full_name_no_middle_norm
-            or encoded_name == urllib.parse.quote_plus(full_name_norm)
-            or encoded_name == urllib.parse.quote_plus(full_name_no_middle_norm)
-        ):
-            if person not in matches:
-                matches.append(person)
-    for person in people_data:
-        names = [
-            normalize(person.get("firstName", "")),
-            normalize(person.get("middleName", "")) if person.get("middleName") else "",
-            normalize(person.get("lastName", "")),
-        ]
-        first_last = normalize(
-            f"{person.get('firstName', '')} {person.get('lastName', '')}"
-        )
-        if any(name_or_email in n for n in names if n) or name_or_email in first_last:
-            if person not in matches:
-                matches.append(person)
+    # Only allow exact email match; all other queries should fall back to RAG
+    name_or_email = name_or_email.strip().lower()
+    matches = [
+        person
+        for person in people_data
+        if person.get("email", "").lower() == name_or_email
+    ]
     return matches
 
 
@@ -232,438 +221,137 @@ def get_person_info_from_question(question, people_data):
         return api_explanation
 
     lower_q = question.strip().lower()
-    # 2. Fuzzy matching for people
-    designation_query = None
-    general_desig_patterns = [
-        r"how many ([\w .,&-]+?)s?(?: (?:are|do|in|at|currently|now|presently|working|work|exist|there|in leapfrog|at leapfrog|in the company|in organization|in org|in team|right now))?\??$",
-        r"number of ([\w .,&-]+?)s?(?: (?:are|do|in|at|currently|now|presently|working|work|exist|there|in leapfrog|at leapfrog|in the company|in organization|in org|in team|right now))?\??$",
-        r"who are the ([\w .,&-]+?)s?(?: (?:in|at|currently|now|presently|working|work|exist|there|in leapfrog|at leapfrog|in the company|in organization|in org|in team|right now))?\??$",
-        r"list of ([\w .,&-]+?)s?(?: (?:in|at|currently|now|presently|working|work|exist|there|in leapfrog|at leapfrog|in the company|in organization|in org|in team|right now))?\??$",
-    ]
-    for pat in general_desig_patterns:
-        m = re.search(pat, lower_q)
-        if m:
-            designation_query = m.group(1).strip()
-            break
-    # 3. Try to extract email, phone, or name
-    matches = []
+    # Only handle exact email match deterministically; all other queries fall back to RAG
+    # Always try to match by name or email for deterministic people info
+    # Try email match first
     email_match = re.search(r"[\w.]+@[\w.]+", lower_q)
+    matches = []
     if email_match:
         search_term = email_match.group(0)
         matches = [p for p in people_data if p.get("email", "").lower() == search_term]
-    elif re.search(r"\d{7,}", lower_q):
-        phone_match = re.search(r"(\+?\d[\d\s-]{6,})", lower_q)
-        if phone_match:
-            phone = phone_match.group(1).replace(" ", "").replace("-", "")
-            matches = [
-                p
-                for p in people_data
-                if p.get("mobilePhone", "").replace(" ", "").replace("-", "") == phone
-            ]
-    elif "working as" in lower_q or "designation" in lower_q or designation_query:
-        if designation_query:
-            desig_area = designation_query.lower()
-        else:
-            desig_match = re.search(
-                r'(?:working as|designation)\s*(?:an?|the)?\s*"?([\w .,&-]+)"?', lower_q
-            )
-            desig_area = desig_match.group(1).strip().lower() if desig_match else ""
-        for noise in [
-            "in leapfrog",
-            "at leapfrog",
-            "leapfrog",
-            "right now",
-            "currently",
-            "now",
-            "presently",
-        ]:
-            desig_area = desig_area.replace(noise, "")
-        desig_area = desig_area.strip()
-        stopwords = set(
-            [
-                "people",
-                "person",
-                "persons",
-                "who",
-                "how",
-                "many",
-                "number",
-                "of",
-                "the",
-                "are",
-                "is",
-                "in",
-                "at",
-                "as",
-                "working",
-                "work",
-                "do",
-                "there",
-                "currently",
-                "now",
-                "presently",
-                "list",
-                "all",
-                "on",
-                "for",
-                "with",
-                "by",
-                "to",
-                "from",
-                "and",
-                "or",
-                "a",
-                "an",
-                "team",
-                "members",
-                "member",
-            ]
-        )
-        query_words = [
-            normalize_word(w)
-            for w in re.split(r"[, ]+", desig_area)
-            if w and normalize_word(w) not in stopwords
-        ]
-        for p in people_data:
-            designation = p.get("designation", {}).get("name", "").lower()
-            area = p.get("designation", {}).get("area", {}).get("name", "").lower()
-            combined = f"{designation}, {area}" if area else designation
-            combined_words = [
-                normalize_word(w) for w in combined.replace(",", " ").split()
-            ]
-            if any(qw in cw or cw in qw for qw in query_words for cw in combined_words):
-                matches.append(p)
     else:
-        # Improved name extraction for queries like "Purna's birthday?", "When was Purna born?", "Where does Purna live?"
-        name_match = re.search(r"(?:who is|contact|about) ([\w .'-]+)", lower_q)
-        if name_match:
-            search_term = name_match.group(1).strip()
-        else:
-            # Try to extract name after 'of', 'for', or at the end (capitalized)
-            name_match2 = re.search(
-                r"(?:of|for|does|is|was|did|has|have|had|will|can|could|would|should|where|when|what|who|whom|whose|which|how) ([A-Z][a-zA-Z .'-]+)",
-                question,
-            )
-            if name_match2:
-                search_term = name_match2.group(1).strip()
-            else:
-                # Try to extract the last capitalized word(s) at the end
-                name_match3 = re.findall(r"([A-Z][a-zA-Z .'-]+)", question)
-                if name_match3:
-                    search_term = name_match3[-1].strip()
-                else:
-                    # Remove possessive 's and punctuation
-                    search_term = lower_q
-                    search_term = re.sub(r"'s\\b", "", search_term)
-                    search_term = re.sub(r"[^a-zA-Z0-9 .'-]", "", search_term)
-                    # Remove known keywords (but only as whole words)
-                    for kw in [
-                        "birthday",
-                        "birth date",
-                        "date of birth",
-                        "born",
-                        "availability",
-                        "availibility",
-                        "available time",
-                        "joining date",
-                        "address",
-                        "location",
-                        "employee since",
-                        "gender",
-                        "blood group",
-                        "country",
-                        "timezone",
-                        "shift",
-                        "type",
-                        "experience",
-                        "working shift",
-                        "working type",
-                        "working hour",
-                        "working hours",
-                        "working time",
-                        "what is the",
-                        "when was",
-                        "who is",
-                        "of",
-                        "the",
-                        "a",
-                        "an",
-                        "is",
-                        "was",
-                        "in",
-                        "on",
-                        "at",
-                        "for",
-                        "with",
-                        "to",
-                        "from",
-                        "does",
-                        "live",
-                        "where",
-                    ]:
-                        search_term = re.sub(rf"\\b{re.escape(kw)}\\b", "", search_term)
-                    search_term = search_term.strip()
-                    # If nothing left, fallback to last word in original question
-                    if not search_term:
-                        words = lower_q.split()
-                        if words:
-                            search_term = words[-1]
-        print("[DEBUG] Name search term:", search_term)
-        matches = get_people_matches(search_term, people_data)
-        # If no matches and search_term has multiple words, try the last word (likely the name)
-        if not matches and len(search_term.split()) > 1:
-            last_word = search_term.split()[-1]
-            stopwords = {
-                "is",
-                "the",
-                "of",
-                "a",
-                "an",
-                "in",
-                "on",
-                "at",
-                "for",
-                "with",
-                "to",
-                "from",
-                "what",
-                "when",
-                "who",
-                "gender",
-                "birthday",
-                "born",
-                "does",
-                "live",
-                "where",
-            }
-            if last_word not in stopwords:
-                matches = get_people_matches(last_word, people_data)
-                if matches:
-                    print(f"[DEBUG] Fallback match found for last word: {last_word}")
-        # Only if still no matches, try each word (excluding stopwords)
-        if not matches and len(search_term.split()) > 1:
-            for word in search_term.split():
-                if word in stopwords:
-                    continue
-                matches = get_people_matches(word, people_data)
-                if matches:
-                    print(f"[DEBUG] Fallback match found for word: {word}")
-                    break
-    if not matches:
-        print("[DEBUG] No matches found for people.")
-        return None
-    # If multiple matches, show disambiguation list and prompt for clarification
-    if len(matches) > 1:
-        disambig_lines = [
-            f"Multiple people found matching your query. Please specify which one you mean:\n"
-        ]
-        for idx, person in enumerate(matches, 1):
-            full_name = f"{person.get('firstName', '').title()} {person.get('middleName', '') or ''}{person.get('lastName', '').title()}"
-            email = person.get("email", "N/A")
-            designation = person.get("designation", {}).get("name", "N/A")
-            disambig_lines.append(
-                f"[{idx}] {full_name} | Email: {email} | Designation: {designation}"
-            )
-        return "\n".join(disambig_lines)
-    # 4. If the question is about detailed info, fetch from detailed API
-    detail_keywords = [
-        "birthday",
-        "birth date",
-        "date of birth",
-        "born",
-        "availability",
-        "availibility",
-        "available time",
-        "joining date",
-        "address",
-        "location",
-        "employee since",
-        "gender",
-        "blood group",
-        "country",
-        "timezone",
-        "shift",
-        "type",
-        "experience",
-        "working shift",
-        "working type",
-        "working hour",
-        "working hours",
-        "working time",
-        "live",
-        "reside",
-        "home",
-        "where",
-    ]
-    if any(k in lower_q for k in detail_keywords):
-        print("[DEBUG] Entering detailed info block for:", question)
-        responses = []
-        for person_info in matches:
-            person_id = person_info.get("id")
-            if not person_id:
-                continue
-            details = fetch_person_details_by_id(person_id)
-            if not details:
-                responses.append(
-                    f"Sorry, I couldn't fetch more details for {person_info.get('firstName', '').title()}."
-                )
-                continue
-            # Map question to fields
-            data = details.get("data", details)  # Use 'data' key if present, else root
-            if any(
-                k in lower_q
-                for k in ["birthday", "birth date", "date of birth", "born"]
+        # Try to match by first name, last name, or full name (case-insensitive, exact)
+        words = set(lower_q.split())
+        for person in people_data:
+            first_name = person.get("firstName", "").strip().lower()
+            last_name = person.get("lastName", "").strip().lower()
+            middle_name = (person.get("middleName", "") or "").strip().lower()
+            full_name = f"{first_name} {middle_name} {last_name}".replace(
+                "  ", " "
+            ).strip()
+            # Match if any word matches first, middle, or last name, or if the question contains the full name
+            if (
+                first_name in words
+                or last_name in words
+                or (middle_name and middle_name in words)
+                or full_name in lower_q
+                or f"{first_name} {last_name}" in lower_q
             ):
-                birthday = data.get("birthday") or data.get("dateOfBirth")
-                if birthday:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s birthday is on {birthday}."
-                    )
-                else:
-                    responses.append("Birthday information is not available.")
-            if any(
-                k in lower_q for k in ["availability", "availibility", "available time"]
-            ):
-                availability = data.get("availabilityTime") or data.get("availability")
-                if availability:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s availability time: {availability}."
-                    )
-                else:
-                    responses.append("Availability information is not available.")
-            if any(k in lower_q for k in ["joining date", "employee since"]):
-                joining = (
-                    data.get("employeeSince")
-                    or data.get("joiningDate")
-                    or data.get("joinDate")
+                matches.append(person)
+    if matches:
+        # If multiple matches, show a list for disambiguation
+        if len(matches) > 1:
+            lines = [
+                "Multiple people found matching your query. Please specify which one you mean:"
+            ]
+            for idx, person_info in enumerate(matches, 1):
+                name = f"{person_info.get('firstName', '').title()} {person_info.get('middleName', '') or ''}{person_info.get('lastName', '').title()}".strip()
+                email = person_info.get("email", "N/A")
+                department = (
+                    person_info.get("department", {}).get("name", "N/A")
+                    if isinstance(person_info.get("department"), dict)
+                    else person_info.get("department", "N/A")
                 )
-                if joining:
-                    responses.append(
-                        f"{data.get('firstName', '').title()} joined on {joining}."
-                    )
-                else:
-                    responses.append("Joining date is not available.")
-            if any(
-                k in lower_q
-                for k in [
-                    "address",
-                    "location",
-                    "country",
-                    "live",
-                    "reside",
-                    "home",
-                    "where",
-                ]
-            ):
-                address = (
-                    data.get("address")
-                    or data.get("location")
-                    or data.get("country")
-                    or data.get("permanentAddress")
-                    or data.get("temporaryAddress")
+                designation = (
+                    person_info.get("designation", {}).get("name", "N/A")
+                    if isinstance(person_info.get("designation"), dict)
+                    else person_info.get("designation", "N/A")
                 )
-                if address:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s address: {address}."
-                    )
-                else:
-                    responses.append("Address/location information is not available.")
-            if any(k in lower_q for k in ["gender"]):
-                gender = data.get("gender")
-                if gender:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s gender: {gender.title()}."
-                    )
-                else:
-                    responses.append("Gender information is not available.")
-            if any(k in lower_q for k in ["blood group"]):
-                blood = data.get("bloodGroup")
-                if blood:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s blood group: {blood}."
-                    )
-                else:
-                    responses.append("Blood group information is not available.")
-            if any(k in lower_q for k in ["timezone"]):
-                tz = data.get("timezone")
-                if tz:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s timezone: {tz}."
-                    )
-                else:
-                    responses.append("Timezone information is not available.")
-            if any(
-                k in lower_q
-                for k in [
-                    "shift",
-                    "working shift",
-                    "working hour",
-                    "working hours",
-                    "working time",
-                ]
-            ):
-                shift = (
-                    data.get("workingShift")
-                    or data.get("shift")
-                    or data.get("workingHour")
-                    or data.get("workingHours")
-                    or data.get("workingTime")
+                more_info_url = f"https://vyaguta.lftechnology.com/leapfroggers/{person_info.get('id', '')}"
+                lines.append(
+                    f"[{idx}] {name} | {designation}, {department} | Email: {email} | More info: {more_info_url}"
                 )
-                if shift:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s working shift: {shift}."
-                    )
-                else:
-                    responses.append("Working shift/hour information is not available.")
-            if any(k in lower_q for k in ["type", "working type"]):
-                wtype = (
-                    data.get("workingType")
-                    or data.get("type")
-                    or data.get("scheduledType")
-                )
-                if wtype:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s working type: {wtype}."
-                    )
-                else:
-                    responses.append("Working type information is not available.")
-            if any(k in lower_q for k in ["experience", "previous experience"]):
-                exp = (
-                    data.get("previousExperience")
-                    or data.get("experience")
-                    or data.get("pastExperience")
-                )
-                if exp:
-                    responses.append(
-                        f"{data.get('firstName', '').title()}'s previous experience: {exp}."
-                    )
-                else:
-                    responses.append(
-                        "Previous experience information is not available."
-                    )
-        if responses:
-            return "\n".join(responses)
-        else:
-            return "I found more details, but I'm not sure what information you need."
-    # 5. Otherwise, return basic info (list style)
-    results = []
-    if len(matches) > 1:
-        results.append(
-            f"\033[96m\n================= {len(matches)} result{'s' if len(matches) > 1 else ''} found =================\033[0m\n"
+            return "\n".join(lines)
+
+        # Otherwise, show detailed info for the single match
+        person_info = matches[0]
+        person_id = person_info.get("id")
+        details = fetch_person_details_by_id(person_id) if person_id else None
+        data = details.get("data", details) if details else person_info
+
+        name = f"{data.get('firstName', '').title()} {data.get('middleName', '') or ''}{data.get('lastName', '').title()}".strip()
+        email = data.get("email", "N/A")
+        mobile = data.get("mobilePhone", "N/A")
+        department = (
+            data.get("department", {}).get("name", "N/A")
+            if isinstance(data.get("department"), dict)
+            else data.get("department", "N/A")
         )
-    for idx, person_info in enumerate(matches, 1):
-        designation = person_info.get("designation", {}).get("name", "N/A")
-        area = person_info.get("designation", {}).get("area", {}).get("name", None)
-        designation_area = f"{designation}, {area}" if area else designation
-        info_lines = [
-            f"\033[92m[{idx}] {person_info.get('firstName', '').title()} {person_info.get('middleName', '') or ''}{person_info.get('lastName', '').title()}\033[0m",
-            f"   \033[94mEmail:\033[0m {person_info.get('email', 'N/A')}",
-            f"   \033[94mMobile:\033[0m {person_info.get('mobilePhone', 'N/A')}",
-            f"   \033[94mDepartment:\033[0m {person_info.get('department', {}).get('name', 'N/A')}",
-            f"   \033[94mDesignation:\033[0m {designation_area}",
-            f"   \033[93mMore info:\033[0m https://vyaguta.lftechnology.com/leapfroggers/{person_info.get('id', '')}",
+        designation = (
+            data.get("designation", {}).get("name", "N/A")
+            if isinstance(data.get("designation"), dict)
+            else data.get("designation", "N/A")
+        )
+        emp_id = data.get("empId", "N/A")
+        gender = data.get("gender", "N/A")
+        join_date = (
+            data.get("joinDate")
+            or data.get("employeeSince")
+            or data.get("joiningDate")
+            or "N/A"
+        )
+        birthday = (
+            data.get("birthday")
+            or data.get("dateOfBirth")
+            or data.get("dateofBirth")
+            or "N/A"
+        )
+        address = (
+            data.get("permanentAddress")
+            or data.get("address")
+            or data.get("location")
+            or data.get("country")
+            or "N/A"
+        )
+        blood_group = data.get("bloodGroup", "N/A")
+        more_info_url = (
+            f"https://vyaguta.lftechnology.com/leapfroggers/{data.get('id', '')}"
+        )
+
+        answer_lines = [
+            f"Name: {name}",
+            f"Employee ID: {emp_id}",
+            f"Designation: {designation}",
+            f"Department: {department}",
+            f"Email: {email}",
+            f"Mobile: {mobile}",
+            f"Gender: {gender}",
+            f"Birthday: {birthday}",
+            f"Join Date: {join_date}",
+            f"Address: {address}",
+            f"Blood Group: {blood_group}",
+            f"For more info, please visit: {more_info_url}",
         ]
-        results.append("\n".join(info_lines))
-        if len(matches) > 1 and idx != len(matches):
-            results.append("\033[90m" + ("-" * 50) + "\033[0m")
-    return "\n".join(results)
+        # If the user asked for a specific field, return only that
+        if any(
+            k in lower_q for k in ["birthday", "birth date", "date of birth", "born"]
+        ):
+            return f"{name}'s birthday is {birthday}."
+        if any(k in lower_q for k in ["gender"]):
+            return f"{name}'s gender is {gender}."
+        if any(k in lower_q for k in ["address", "location", "country"]):
+            return f"{name}'s address is {address}."
+        if any(k in lower_q for k in ["mobile", "phone"]):
+            return f"{name}'s mobile number is {mobile}."
+        if any(k in lower_q for k in ["email"]):
+            return f"{name}'s email is {email}."
+        if any(k in lower_q for k in ["department"]):
+            return f"{name} works in the {department} department."
+        if any(k in lower_q for k in ["designation"]):
+            return f"{name}'s designation is {designation}."
+        if any(k in lower_q for k in ["blood group"]):
+            return f"{name}'s blood group is {blood_group}."
+        if any(k in lower_q for k in ["join date", "joining date", "employee since"]):
+            return f"{name} joined on {join_date}."
+        return "\n".join(answer_lines)
+    return None

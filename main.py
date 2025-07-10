@@ -72,10 +72,21 @@ def load_onboarding_docs(directories=None):
     return all_docs
 
 
-from people import fetch_people_data, get_person_info_from_question, is_people_query
+from people import (
+    fetch_people_data,
+    get_person_info_from_question,
+    is_people_query,
+    generate_people_docs,
+)
+from langchain_core.documents import Document
 
 
 docs = load_onboarding_docs()
+
+# --- Add people data to RAG context as Document objects ---
+people_data = fetch_people_data()
+people_docs = [Document(page_content=doc) for doc in generate_people_docs(people_data)]
+docs.extend(people_docs)
 
 
 # --- Enhanced Retriever: Keyword + Semantic Hybrid ---
@@ -219,31 +230,11 @@ def normalize_name(name):
 
 def find_person_promotions(name_query, promotions):
     nq = " ".join(name_query.lower().split())
-    # 1. Try exact full name match
+    # Only allow exact full name match; all other queries should fall back to RAG
     exact = [p for p in promotions if nq == " ".join(p["name"].lower().split())]
     if exact:
         return exact, False  # False = not ambiguous
-    # 2. Try substring match (anywhere in the name)
-    partial = [p for p in promotions if nq in p["name"].lower()]
-    if partial:
-        return partial, True if len(partial) > 1 else False
-    # 3. Try first/last name match (query matches start of any part of the name)
-    token_matches = [
-        p
-        for p in promotions
-        if any(part.startswith(nq) for part in p["name"].lower().split())
-    ]
-    if token_matches:
-        return token_matches, True if len(token_matches) > 1 else False
-    # 4. Fuzzy match (Levenshtein distance <= 1 for any part of the name)
-    fuzzy = []
-    for p in promotions:
-        for part in p["name"].lower().split():
-            if difflib.SequenceMatcher(None, nq, part).ratio() > 0.8:
-                fuzzy.append(p)
-                break
-    if fuzzy:
-        return fuzzy, True if len(fuzzy) > 1 else False
+    # If no exact match, let RAG handle the query
     return [], False
 
 
@@ -348,8 +339,7 @@ def main():
     print(color_text(title, Fore.CYAN + Style.BRIGHT) if COLORAMA else title)
     print(color_text(border, Fore.CYAN) if COLORAMA else border)
 
-    # Fetch people data once at startup (can be refreshed as needed)
-    people_data = fetch_people_data()
+    # people_data is already loaded and indexed for RAG at startup
 
     while True:
         user_prompt = (
