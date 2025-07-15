@@ -177,4 +177,59 @@ How is quarterly feedback used in the annual performance evaluation?
 
 ---
 
+## What is a Python Virtual Environment (venv)?
+
+A virtual environment (venv) is a self-contained directory that contains its own Python installation and packages, isolated from the global Python environment. This helps you avoid conflicts between projects and keeps dependencies organized—similar to how `node_modules` works in React projects.
+
+## Setting Up and Using venv
+
+1. **Create a virtual environment** (only once per project):
+
+   ```bash
+   python3 -m venv .venv
+   ```
+
+   This creates a `.venv` folder in your project directory.
+
+2. **Activate the virtual environment** (every time you start work):
+
+   ```bash
+   source .venv/bin/activate
+   ```
+
+   Your terminal prompt will change to show you are in the venv.
+
+3. **Install dependencies** (inside the activated venv):
+
+   ```bash
+   python3 -m pip install -r requirements.txt
+   ```
+
+   This installs all required packages locally to `.venv`.
+
+4. **Run your scripts** (while venv is activated):
+
+   ```bash
+   python3 main.py
+   # or any other script
+   ```
+
+5. **Deactivate the environment** (when done):
+   ```bash
+   deactivate
+   ```
+
+### Why use venv?
+
+- Keeps dependencies isolated per project
+- Prevents version conflicts
+- Makes your project reproducible for others
+- Easy to clean up (just delete `.venv`)
+
+### Note on global packages
+
+You do not need to delete global packages for your project to work with venv. Your code will use the packages installed in `.venv` when activated. If you want to clean up your global environment, you can uninstall packages globally, but it is optional.
+
+---
+
 This MVP demonstrates the core GenAI, LangChain, and RAG concepts from your course syllabus.

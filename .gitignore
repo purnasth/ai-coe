@@ -1,5 +1,6 @@
 # Ignore auto-generated Confluence markdown files
 docs-confluence/
+docs-api/
 
 # Ignore .env file
 .env
