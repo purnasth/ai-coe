@@ -1,3 +1,5 @@
+# TODO: Integrate Confluence data fetching with the main RAG pipeline (automatic connection)
+
 import os
 import requests
 from markdownify import markdownify as md

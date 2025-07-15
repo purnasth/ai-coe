@@ -30,18 +30,33 @@ The Vyaguta Onboarding Assistant Chatbot uses a sophisticated combination of mod
 - **RAG (Retrieval-Augmented Generation):** To fetch relevant information from internal documentation.
 - **LangChain:** To orchestrate the workflow between user queries, retrieval, and LLM responses.
 
-**Workflow Diagram:**
+**Enhanced Workflow Diagram:**
 
 ```mermaid
 flowchart TD
     A[User Query] --> B[LangChain Orchestration]
     B --> C{RAG: Retrieve Relevant Docs}
-    C --> D[Internal Docs/FAQs]
-    C --> E[Onboarding Guides]
-    D --> F[LLM (OpenAI/GPT)]
-    E --> F
-    F --> G[Chatbot Response]
-    B --> F
+
+    subgraph "Data Sources"
+        D[Confluence Docs]
+        E[Vyaguta APIs]
+    end
+
+    subgraph "Vector Database"
+        H[Processed Document Chunks]
+        I[Vector Embeddings]
+        J[Metadata & Source Info]
+    end
+
+    D --> H
+    E --> H
+    H --> I
+
+    C --> I
+    I --> K[Context Retrieval]
+    K --> L[LLM (OpenAI/GPT)]
+    L --> M[Chatbot Response]
+    B --> L
 ```
 
 ### Detailed Workflow Explanation:
@@ -176,9 +191,127 @@ This acts like a project manager who ensures everything works smoothly together.
 
 ## Tech Stacks Used
 
-- **Web Development:** Full Stack
+### **Core Technologies:**
+
+- **Web Development:** Full Stack (Frontend + Backend)
 - **AI Integration:** OpenAI API (REST)
-- **Database:** PostgreSQL (with full-text search)
-- **Other:** Mermaid (for diagrams), Markdown
+- **Framework:** LangChain for AI workflow orchestration
+- **Database:** PostgreSQL with pgvector extension for vector storage
+
+### **Data Sources & Integration:**
+
+- **Confluence API:** For organizational documentation and knowledge base
+- **Vyaguta REST APIs:** For real-time system data and user permissions
+
+### **Data Processing:**
+
+- **Vector Embeddings:** OpenAI Ada-002 embedding model
+- **Document Processing:** Python libraries (BeautifulSoup, pandas, numpy)
+- **Text Chunking:** LangChain text splitters and document loaders
+- **Confluence Loader:** Custom Confluence document extraction
+
+### **Infrastructure & Deployment:**
+
+- **Vector Database:** PostgreSQL with pgvector for semantic search
+- **Caching:** Redis for frequently accessed data
+- **API Gateway:** For secure external API access
+- **Monitoring:** Logging and analytics for system performance
+
+### **Development Tools:**
+
+- **Documentation:** Mermaid for diagrams, Markdown for documentation
+- **Version Control:** Git for code management
+- **Testing:** Automated testing for data pipeline and API endpoints
+- **CI/CD:** Automated deployment and data synchronization pipelines
+
+---
+
+## Data Sources & Collection Strategy
+
+The Vyaguta Onboarding Assistant will collect data from two primary sources to provide accurate and up-to-date information about Vyaguta modules and organizational procedures.
+
+### Primary Data Sources:
+
+#### **1. Confluence Documentation**
+
+- **Source**: Company's Confluence workspace containing organizational knowledge
+- **Content**: HR policies, Vyaguta user guides, department workflows, FAQ documents, onboarding processes
+- **Access**: Confluence REST API with secure authentication
+- **Update**: Daily automated synchronization
+
+#### **2. Vyaguta API Integration**
+
+- **Source**: Direct integration with Vyaguta's internal APIs
+- **Content**: Real-time system status, user permissions, module configurations, system announcements
+- **Access**: Vyaguta REST APIs with proper authentication
+- **Update**: Real-time for critical information, hourly for general updates
+
+### Data Pipeline Architecture:
+
+```mermaid
+flowchart TD
+    A[Confluence Pages] --> C[Data Processing]
+    B[Vyaguta APIs] --> C
+
+    C --> D[Text Chunking]
+    D --> E[Vector Embeddings]
+    E --> F[Vector Database Storage]
+
+    G[User Query] --> H[Semantic Search]
+    F --> H
+    H --> I[LLM Response Generation]
+```
+
+---
+
+## Data Processing & Storage Pipeline
+
+### Data Processing Workflow:
+
+#### **1. Data Extraction**
+
+- **Confluence**: Extract documentation using Confluence Loader API
+- **Vyaguta**: Fetch real-time data through REST APIs
+- **Processing**: Convert to clean text and extract metadata
+
+#### **2. Vector Database Storage**
+
+- **Chunking**: Split documents into 500-1000 token chunks with overlap
+- **Embeddings**: Generate vector embeddings using OpenAI Ada-002
+- **Storage**: PostgreSQL with pgvector extension for semantic search
+
+```sql
+CREATE TABLE document_chunks (
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    embedding vector(1536),
+    source_type VARCHAR(50), -- 'confluence' or 'vyaguta_api'
+    source_url TEXT,
+    last_updated TIMESTAMP
+);
+```
+
+#### **3. Data Synchronization**
+
+- **Automated Pipeline**: Daily sync from Confluence, real-time from Vyaguta APIs
+- **Quality Assurance**: Automated validation and duplicate detection
+
+---
+
+## Data Security & Compliance
+
+### Security Measures:
+
+- **API Authentication**: Secure token-based authentication for Confluence and Vyaguta APIs
+- **Data Encryption**: All data encrypted in transit (HTTPS/TLS) and at rest
+- **Access Control**: Role-based access based on user permissions
+- **Audit Trails**: Logging of all data access and modifications
+
+### Data Governance:
+
+- **Source Verification**: Ensure data comes from authorized Confluence spaces and Vyaguta APIs
+- **Content Validation**: Automated checks for data accuracy and completeness
+- **Update Protocols**: Standardized procedures for data synchronization
+- **Privacy Protection**: Careful handling of sensitive organizational information
 
 ---

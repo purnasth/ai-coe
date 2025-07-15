@@ -1,9 +1,11 @@
-
 # TODO Case for multiple people with the same name
 # TODO Data not trained for handling more detailed people queries
 
+import os
 import requests
 import re
+from config import API_PEOPLE_URL, VYAGUTA_BASE_URL
+from auth import refresh_access_token, app_startup
 
 
 # --- API endpoint explanations ---
@@ -58,12 +60,7 @@ def normalize_word(word):
 
 # --- Fetch all people (basic info) ---
 def fetch_people_data():
-    import os
-
-    base_url = (
-        "https://vyaguta.lftechnology.com/api/core/users?order=ASC&sortBy=firstName&fields="
-        "avatarUrl%2CmobilePhone%2Cdepartment%2Cdesignation%2CleaveIssuer"
-    )
+    base_url = f"{API_PEOPLE_URL}?order=ASC&sortBy=firstName&fields=avatarUrl%2CmobilePhone%2Cdepartment%2Cdesignation%2CleaveIssuer"
     token = os.getenv("VYAGUTA_ACCESS_TOKEN")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     all_people = []
@@ -109,15 +106,13 @@ def generate_people_docs(people_data):
 
 # --- Fetch detailed info for a person by ID ---
 def fetch_person_details_by_id(person_id):
-    url = f"https://vyaguta.lftechnology.com/api/core/users/{person_id}"
-    import os
-
+    url = f"{VYAGUTA_BASE_URL}/api/core/users/{person_id}"
     token = os.getenv("VYAGUTA_ACCESS_TOKEN")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
-    print("[DEBUG] Fetching detailed user info:")
-    print("[DEBUG] URL:", url)
-    print("[DEBUG] Token:", token)
-    print("[DEBUG] Headers:", headers)
+    # print("[DEBUG] Fetching detailed user info:")
+    # print("[DEBUG] URL:", url)
+    # print("[DEBUG] Token:", token)
+    # print("[DEBUG] Headers:", headers)
     try:
         response = requests.get(url, headers=headers, timeout=10)
         print("[DEBUG] Status Code:", response.status_code)
@@ -129,9 +124,7 @@ def fetch_person_details_by_id(person_id):
         return None
 
 
-# --- Fuzzy/partial matching for people ---
 def get_people_matches(name_or_email, people_data):
-    # Only allow exact email match; all other queries should fall back to RAG
     name_or_email = name_or_email.strip().lower()
     matches = [
         person
@@ -267,7 +260,9 @@ def get_person_info_from_question(question, people_data):
                     if isinstance(person_info.get("designation"), dict)
                     else person_info.get("designation", "N/A")
                 )
-                more_info_url = f"https://vyaguta.lftechnology.com/leapfroggers/{person_info.get('id', '')}"
+                more_info_url = (
+                    f"{VYAGUTA_BASE_URL}/leapfroggers/{person_info.get('id', '')}"
+                )
                 lines.append(
                     f"[{idx}] {name} | {designation}, {department} | Email: {email} | More info: {more_info_url}"
                 )
@@ -314,9 +309,7 @@ def get_person_info_from_question(question, people_data):
             or "N/A"
         )
         blood_group = data.get("bloodGroup", "N/A")
-        more_info_url = (
-            f"https://vyaguta.lftechnology.com/leapfroggers/{data.get('id', '')}"
-        )
+        more_info_url = f"{VYAGUTA_BASE_URL}/leapfroggers/{data.get('id', '')}"
 
         answer_lines = [
             f"Name: {name}",

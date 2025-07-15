@@ -20,6 +20,7 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 import re
 import difflib
+from auth import app_startup
 
 
 def load_api_key() -> str:
@@ -35,6 +36,9 @@ def load_api_key() -> str:
 
 OPENAI_API_KEY = load_api_key()
 
+
+# --- Authenticate and refresh Vyaguta access token at startup ---
+app_startup()
 
 # --- Enhanced Markdown Chunking for Fine-Grained RAG ---
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
