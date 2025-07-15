@@ -178,3 +178,5 @@ How is quarterly feedback used in the annual performance evaluation?
 ---
 
 This MVP demonstrates the core GenAI, LangChain, and RAG concepts from your course syllabus.
+
+`Note`: This is a docs branch, not the main codebase. The main codebase is in the `main` branch. It contains the practice exercises and the course overview of the GenAI, LangChain, and RAG course.
