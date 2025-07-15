@@ -1,4 +1,5 @@
 # Ignore auto-generated Confluence markdown files
+docs/
 docs-confluence/
 docs-api/
 
@@ -11,3 +12,10 @@ __init__.py
 
 # ignore .DS_Store files
 .DS_Store
+
+# chroma database files
+chroma_db/
+
+# virtual environment directories
+venv/
+.venv/

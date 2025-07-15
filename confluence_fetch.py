@@ -1,5 +1,3 @@
-# TODO: Integrate Confluence data fetching with the main RAG pipeline (automatic connection)
-
 import os
 import requests
 from markdownify import markdownify as md
@@ -7,7 +5,6 @@ from getpass import getpass
 from urllib.parse import quote
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 
@@ -42,7 +39,7 @@ def get_page_ids(space_key):
     resp = requests.get(url, auth=auth, headers=headers, params=params)
     resp.raise_for_status()
     data = resp.json()
-    # Some Confluence instances use 'page', others 'pages'
+
     results = data.get("page", data.get("pages", {})).get("results", [])
     return [(p["id"], p["title"]) for p in results]
 
