@@ -2,8 +2,9 @@
 # TODO Data not trained for handling more detailed people queries
 
 import os
-import requests
 import re
+import glob
+import markdown
 from config import API_PEOPLE_URL, VYAGUTA_BASE_URL
 from auth import refresh_access_token, app_startup
 
@@ -58,79 +59,64 @@ def normalize_word(word):
     return synonyms.get(w, w)
 
 
-# --- Fetch all people (basic info) ---
+def load_people_from_markdown(directory="docs-api/people"):
+    people = []
+    for md_file in glob.glob(os.path.join(directory, "*.md")):
+        with open(md_file, encoding="utf-8") as f:
+            content = f.read()
+        # Simple parsing: extract fields from markdown bullet points
+        person = {}
+        lines = content.splitlines()
+        # First line is the name header
+        if lines and lines[0].startswith("# "):
+            person["name"] = lines[0][2:].replace("_", " ").strip()
+        for line in lines:
+            if line.startswith("- "):
+                parts = line[2:].split(":", 1)
+                if len(parts) == 2:
+                    key = parts[0].strip().lower().replace(" ", "_")
+                    value = parts[1].strip()
+                    person[key] = value
+        people.append(person)
+    return people
+
+
+# --- Fetch all people (from markdown) ---
 def fetch_people_data():
-    base_url = f"{API_PEOPLE_URL}?order=ASC&sortBy=firstName&fields=avatarUrl%2CmobilePhone%2Cdepartment%2Cdesignation%2CleaveIssuer"
-    token = os.getenv("VYAGUTA_ACCESS_TOKEN")
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
-    all_people = []
-    page = 1
-    while True:
-        url = f"{base_url}&page={page}"
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            people = data.get("data", [])
-            if not people:
-                break
-            all_people.extend(people)
-            meta = data.get("meta", {})
-            total_pages = meta.get("totalPages")
-            if total_pages and page >= total_pages:
-                break
-            page += 1
-        except Exception as e:
-            print(f"Warning: Could not fetch people data from API (page {page}). {e}")
-            break
-    return all_people
+    return load_people_from_markdown()
 
 
-# --- Generate RAG-friendly people docs ---
-def generate_people_docs(people_data):
-    """
-    Converts people data into text chunks for RAG ingestion.
-    Each person becomes a short summary string.
-    """
-    docs = []
-    for person in people_data:
-        name = f"{person.get('firstName', '')} {person.get('middleName', '') or ''} {person.get('lastName', '')}".strip()
-        designation = person.get("designation", {}).get("name", "N/A")
-        department = person.get("department", {}).get("name", "N/A")
-        email = person.get("email", "N/A")
-        mobile = person.get("mobilePhone", "N/A")
-        summary = f"{name}: {designation}, {department}, {email}, {mobile}"
-        docs.append(summary)
-    return docs
-
-
-# --- Fetch detailed info for a person by ID ---
+# --- Fetch detailed info for a person by ID (from markdown) ---
 def fetch_person_details_by_id(person_id):
-    url = f"{VYAGUTA_BASE_URL}/api/core/users/{person_id}"
-    token = os.getenv("VYAGUTA_ACCESS_TOKEN")
-    headers = {"Authorization": f"Bearer {token}"} if token else {}
-    # print("[DEBUG] Fetching detailed user info:")
-    # print("[DEBUG] URL:", url)
-    # print("[DEBUG] Token:", token)
-    # print("[DEBUG] Headers:", headers)
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        print("[DEBUG] Status Code:", response.status_code)
-        print("[DEBUG] Response Text:", response.text)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"Warning: Could not fetch details for person ID {person_id}. {e}")
-        return None
+    people = load_people_from_markdown()
+    for person in people:
+        if person.get("employee_id") == str(person_id) or person.get("id") == str(
+            person_id
+        ):
+            return person
+    return None
 
 
 def get_people_matches(name_or_email, people_data):
     name_or_email = name_or_email.strip().lower()
-    matches = [
-        person
-        for person in people_data
-        if person.get("email", "").lower() == name_or_email
-    ]
+    matches = []
+    # Match by email (exact)
+    for person in people_data:
+        if person.get("email", "").lower() == name_or_email:
+            matches.append(person)
+    # Match by name (partial, case-insensitive)
+    for person in people_data:
+        name = person.get("name", "").lower()
+        if name_or_email in name and person not in matches:
+            matches.append(person)
+        # Also match first/middle/last if available
+        for key in ["first_name", "middle_name", "last_name"]:
+            if (
+                key in person
+                and name_or_email in person[key].lower()
+                and person not in matches
+            ):
+                matches.append(person)
     return matches
 
 
@@ -202,8 +188,113 @@ def is_people_query(question):
     return False
 
 
+# --- Check if the question is about the total number of people ---
+def is_total_people_query(question):
+    """
+    Returns True if the question is asking for the total number of people/employees at Leapfrog.
+    """
+    q = question.lower()
+    patterns = [
+        r"how many people",
+        r"total number of people",
+        r"number of employees",
+        r"how many employees",
+        r"total employees",
+        r"total leapfroggers",
+        r"how many leapfroggers",
+        r"total participants",
+        r"number of participants",
+    ]
+    return any(re.search(pat, q) for pat in patterns)
+
+
+# --- Extract field count query ---
+def extract_field_count_query(question):
+    """
+    Returns (field, value) if the question is asking for the count of people by a field (designation, department, gender, etc.).
+    E.g. "How many Associate Software Engineer are there?", "How many people in Engineering?", "How many males?"
+    """
+    q = question.lower()
+    # Designation
+    m = re.search(r"how many ([\w\s\(\)\-]+) are there", q)
+    if m:
+        return ("designation", m.group(1).strip())
+    # Department
+    m = re.search(r"how many people in ([\w\s\(\)\-]+)", q)
+    if m:
+        return ("department", m.group(1).strip())
+    # Gender
+    m = re.search(r"how many (male|female|males|females|men|women)", q)
+    if m:
+        gender = m.group(1)
+        if gender in ["male", "males", "men"]:
+            return ("gender", "male")
+        else:
+            return ("gender", "female")
+    return (None, None)
+
+
+# --- Extract field list query ---
+def extract_field_list_query(question):
+    """
+    Returns field if the question is asking to list all values of a field (departments, designations, etc.)
+    E.g. "List all departments", "Show all designations"
+    """
+    q = question.lower()
+    if "list all departments" in q or "show all departments" in q:
+        return "department"
+    if "list all designations" in q or "show all designations" in q:
+        return "designation"
+    return None
+
+
 # --- Main function: answer people-related questions ---
-def get_person_info_from_question(question, people_data):
+def get_person_info_from_question(question, people_data=None):
+    people_data = fetch_people_data()
+    lower_q = question.strip().lower()
+    # --- Count queries by field ---
+    field, value = extract_field_count_query(question)
+    if field and value:
+        count = 0
+        names = []
+        for person in people_data:
+            if field == "designation":
+                designation = person.get("designation", "").lower()
+                if normalize_designation(value) == normalize_designation(designation):
+                    count += 1
+                    names.append(person.get("name", "N/A"))
+            elif field == "department":
+                department = person.get("department", "").lower()
+                if normalize_department(value) == normalize_department(department):
+                    count += 1
+                    names.append(person.get("name", "N/A"))
+            elif field == "gender":
+                gender = person.get("gender", "").lower()
+                if normalize_gender(value) == normalize_gender(gender):
+                    count += 1
+                    names.append(person.get("name", "N/A"))
+        if count == 0:
+            return f"There are 0 {value.title()}s at Leapfrog."
+        if count <= 10:
+            return (
+                f"There are {count} {value.title()}s at Leapfrog: {', '.join(names)}."
+            )
+        return f"There are {count} {value.title()}s at Leapfrog."
+
+    # --- List queries by field ---
+    list_field = extract_field_list_query(question)
+    if list_field:
+        values = set()
+        for person in people_data:
+            if list_field == "designation":
+                values.add(normalize_designation(person.get("designation", "N/A")))
+            elif list_field == "department":
+                values.add(normalize_department(person.get("department", "N/A")))
+        return f"All {list_field}s at Leapfrog: {', '.join(sorted(values))}"
+
+    if is_total_people_query(question):
+        total = len(people_data)
+        return f"There are {total} people at Leapfrog."
     if not is_people_query(question):
         return None
     print("[DEBUG] get_person_info_from_question called with question:", question)
@@ -213,138 +304,205 @@ def get_person_info_from_question(question, people_data):
         print("[DEBUG] API explanation triggered.")
         return api_explanation
 
-    lower_q = question.strip().lower()
-    # Only handle exact email match deterministically; all other queries fall back to RAG
-    # Always try to match by name or email for deterministic people info
-    # Try email match first
-    email_match = re.search(r"[\w.]+@[\w.]+", lower_q)
-    matches = []
-    if email_match:
-        search_term = email_match.group(0)
-        matches = [p for p in people_data if p.get("email", "").lower() == search_term]
-    else:
-        # Try to match by first name, last name, or full name (case-insensitive, exact)
-        words = set(lower_q.split())
-        for person in people_data:
-            first_name = person.get("firstName", "").strip().lower()
-            last_name = person.get("lastName", "").strip().lower()
-            middle_name = (person.get("middleName", "") or "").strip().lower()
-            full_name = f"{first_name} {middle_name} {last_name}".replace(
-                "  ", " "
-            ).strip()
-            # Match if any word matches first, middle, or last name, or if the question contains the full name
-            if (
-                first_name in words
-                or last_name in words
-                or (middle_name and middle_name in words)
-                or full_name in lower_q
-                or f"{first_name} {last_name}" in lower_q
-            ):
-                matches.append(person)
+    # --- Improved name matching ---
+    name_query = lower_q
+    matches = get_people_matches(name_query, people_data)
     if matches:
         # If multiple matches, show a list for disambiguation
         if len(matches) > 1:
             lines = [
-                "Multiple people found matching your query. Please specify which one you mean:"
+                f"Found {len(matches)} people matching your query. Please specify which one you mean, or see details below:"
             ]
             for idx, person_info in enumerate(matches, 1):
-                name = f"{person_info.get('firstName', '').title()} {person_info.get('middleName', '') or ''}{person_info.get('lastName', '').title()}".strip()
-                email = person_info.get("email", "N/A")
-                department = (
-                    person_info.get("department", {}).get("name", "N/A")
-                    if isinstance(person_info.get("department"), dict)
-                    else person_info.get("department", "N/A")
-                )
-                designation = (
-                    person_info.get("designation", {}).get("name", "N/A")
-                    if isinstance(person_info.get("designation"), dict)
-                    else person_info.get("designation", "N/A")
-                )
-                more_info_url = (
-                    f"{VYAGUTA_BASE_URL}/leapfroggers/{person_info.get('id', '')}"
-                )
-                lines.append(
-                    f"[{idx}] {name} | {designation}, {department} | Email: {email} | More info: {more_info_url}"
-                )
+                lines.append(f"[{idx}]\n" + format_full_person_info(person_info) + "\n")
             return "\n".join(lines)
-
-        # Otherwise, show detailed info for the single match
+        # Otherwise, show rich info for the single match
         person_info = matches[0]
-        person_id = person_info.get("id")
-        details = fetch_person_details_by_id(person_id) if person_id else None
-        data = details.get("data", details) if details else person_info
-
-        name = f"{data.get('firstName', '').title()} {data.get('middleName', '') or ''}{data.get('lastName', '').title()}".strip()
-        email = data.get("email", "N/A")
-        mobile = data.get("mobilePhone", "N/A")
-        department = (
-            data.get("department", {}).get("name", "N/A")
-            if isinstance(data.get("department"), dict)
-            else data.get("department", "N/A")
-        )
-        designation = (
-            data.get("designation", {}).get("name", "N/A")
-            if isinstance(data.get("designation"), dict)
-            else data.get("designation", "N/A")
-        )
-        emp_id = data.get("empId", "N/A")
-        gender = data.get("gender", "N/A")
-        join_date = (
-            data.get("joinDate")
-            or data.get("employeeSince")
-            or data.get("joiningDate")
-            or "N/A"
-        )
-        birthday = (
-            data.get("birthday")
-            or data.get("dateOfBirth")
-            or data.get("dateofBirth")
-            or "N/A"
-        )
-        address = (
-            data.get("permanentAddress")
-            or data.get("address")
-            or data.get("location")
-            or data.get("country")
-            or "N/A"
-        )
-        blood_group = data.get("bloodGroup", "N/A")
-        more_info_url = f"{VYAGUTA_BASE_URL}/leapfroggers/{data.get('id', '')}"
-
-        answer_lines = [
-            f"Name: {name}",
-            f"Employee ID: {emp_id}",
-            f"Designation: {designation}",
-            f"Department: {department}",
-            f"Email: {email}",
-            f"Mobile: {mobile}",
-            f"Gender: {gender}",
-            f"Birthday: {birthday}",
-            f"Join Date: {join_date}",
-            f"Address: {address}",
-            f"Blood Group: {blood_group}",
-            f"For more info, please visit: {more_info_url}",
-        ]
-        # If the user asked for a specific field, return only that
-        if any(
-            k in lower_q for k in ["birthday", "birth date", "date of birth", "born"]
-        ):
-            return f"{name}'s birthday is {birthday}."
-        if any(k in lower_q for k in ["gender"]):
-            return f"{name}'s gender is {gender}."
-        if any(k in lower_q for k in ["address", "location", "country"]):
-            return f"{name}'s address is {address}."
-        if any(k in lower_q for k in ["mobile", "phone"]):
-            return f"{name}'s mobile number is {mobile}."
-        if any(k in lower_q for k in ["email"]):
-            return f"{name}'s email is {email}."
-        if any(k in lower_q for k in ["department"]):
-            return f"{name} works in the {department} department."
-        if any(k in lower_q for k in ["designation"]):
-            return f"{name}'s designation is {designation}."
-        if any(k in lower_q for k in ["blood group"]):
-            return f"{name}'s blood group is {blood_group}."
-        if any(k in lower_q for k in ["join date", "joining date", "employee since"]):
-            return f"{name} joined on {join_date}."
-        return "\n".join(answer_lines)
+        return format_full_person_info(person_info)
     return None
+
+
+# --- Helper to format all available fields for a person ---
+def format_full_person_info(person_info):
+    """
+    Formats all available fields of a person into a creative, multi-line, rich output.
+    """
+    lines = []
+    name = person_info.get("name", person_info.get("fullName", "N/A"))
+    emp_id = person_info.get("employee_id", person_info.get("id", "N/A"))
+    designation = person_info.get("designation", "N/A")
+    department = person_info.get("department", "N/A")
+    email = person_info.get("email", "N/A")
+    mobile = person_info.get("mobile", person_info.get("mobile_phone", "N/A"))
+    gender = person_info.get("gender", "N/A")
+    birthday = person_info.get("birthday", "N/A")
+    join_date = person_info.get("join_date", "N/A")
+    address = person_info.get("address", "N/A")
+    blood_group = person_info.get("blood_group", "N/A")
+    personal_email = person_info.get("personal_email", "N/A")
+    emergency_phone = person_info.get("emergency_phone", "N/A")
+    emergency_contact_relationship = person_info.get(
+        "emergency_contact_relationship", "N/A"
+    )
+    github_id = person_info.get("githubid", person_info.get("github_id", "N/A"))
+    avatar_url = person_info.get("avatar_url", "N/A")
+    timezone = person_info.get("timezone", "N/A")
+    past_experience = person_info.get("past_experience", "N/A")
+    emp_status = person_info.get("emp_status", "N/A")
+    working_shift = person_info.get("working_shift", "N/A")
+    maritial_status = person_info.get("maritial_status", "N/A")
+    lines.append(f"Name: {name}")
+    lines.append(f"Employee ID: {emp_id}")
+    lines.append(f"Designation: {designation}")
+    lines.append(f"Department: {department}")
+    lines.append(f"Email: {email}")
+    lines.append(f"Mobile: {mobile}")
+    lines.append(f"Gender: {gender}")
+    lines.append(f"Birthday: {birthday}")
+    lines.append(f"Join Date: {join_date}")
+    lines.append(f"Address: {address}")
+    lines.append(f"Blood Group: {blood_group}")
+    lines.append(f"Personal Email: {personal_email}")
+    lines.append(f"Emergency Phone: {emergency_phone}")
+    lines.append(f"Emergency Contact Relationship: {emergency_contact_relationship}")
+    lines.append(f"Github ID: {github_id}")
+    lines.append(f"Avatar URL: {avatar_url}")
+    lines.append(f"Timezone: {timezone}")
+    lines.append(f"Past Experience: {past_experience}")
+    lines.append(f"Employment Status: {emp_status}")
+    lines.append(f"Working Shift: {working_shift}")
+    lines.append(f"Maritial Status: {maritial_status}")
+    # Skills
+    skills = person_info.get("skills", None)
+    skill_names = []
+    if skills and skills != "N/A":
+        if isinstance(skills, str):
+            try:
+                import ast
+
+                parsed_skills = ast.literal_eval(skills)
+                if isinstance(parsed_skills, list):
+                    skill_names = [
+                        s.get("name", str(s))
+                        for s in parsed_skills
+                        if isinstance(s, dict)
+                    ]
+                    if not skill_names:
+                        skill_names = [str(s) for s in parsed_skills]
+                else:
+                    skill_names = [skills]
+            except Exception:
+                skill_names = [skills]
+        elif isinstance(skills, list):
+            skill_names = [s.get("name", str(s)) for s in skills if isinstance(s, dict)]
+            if not skill_names:
+                skill_names = [str(s) for s in skills]
+        if skill_names:
+            lines.append(f"Skills: {', '.join(skill_names)}")
+
+    # Nested fields
+    def format_person_field(field):
+        if isinstance(field, dict):
+            fn = field.get("firstName", "")
+            mn = field.get("middleName", "")
+            ln = field.get("lastName", "")
+            email = field.get("email", "")
+            empid = field.get("empId", field.get("id", ""))
+            return f"{fn} {mn} {ln} (Email: {email}, ID: {empid})".replace(
+                "  ", " "
+            ).strip()
+        return str(field)
+
+    supervisor = person_info.get("supervisor", None)
+    if supervisor and supervisor != "N/A":
+        lines.append(f"Supervisor: {format_person_field(supervisor)}")
+    coach = person_info.get("coach", None)
+    if coach and coach != "N/A":
+        lines.append(f"Coach: {format_person_field(coach)}")
+    team_manager = person_info.get("teammanager", person_info.get("team_manager", None))
+    if team_manager and team_manager != "N/A":
+        lines.append(f"Team Manager: {format_person_field(team_manager)}")
+    leave_issuer = person_info.get("leave_issuer", None)
+    if leave_issuer and leave_issuer != "N/A":
+        lines.append(f"Leave Issuer: {format_person_field(leave_issuer)}")
+    # Add any other available fields not already shown
+    shown_keys = set(
+        [
+            "name",
+            "employee_id",
+            "id",
+            "designation",
+            "department",
+            "email",
+            "mobile",
+            "mobile_phone",
+            "gender",
+            "join_date",
+            "birthday",
+            "address",
+            "blood_group",
+            "avatar_url",
+            "personal_email",
+            "emergency_phone",
+            "emergency_contact_relationship",
+            "githubid",
+            "skills",
+            "supervisor",
+            "coach",
+            "teammanager",
+            "team_manager",
+            "leave_issuer",
+            "timezone",
+            "past_experience",
+            "emp_status",
+            "working_shift",
+            "maritial_status",
+        ]
+    )
+    for key, value in person_info.items():
+        if key not in shown_keys and value and value != "N/A":
+            lines.append(f"{key.replace('_', ' ').title()}: {value}")
+    return "\n".join(lines)
+
+
+def normalize_designation(designation):
+    """
+    Normalize designation for matching (handles abbreviations, plural, etc.)
+    """
+    d = designation.lower().strip()
+    if d in ["ase", "associate software engineer", "associate software engineers"]:
+        return "associate software engineer"
+    # Add more normalization rules as needed
+    return d
+
+
+def normalize_department(department):
+    d = department.lower().strip()
+    # Add more normalization rules as needed
+    return d
+
+
+def normalize_gender(gender):
+    g = gender.lower().strip()
+    if g in ["male", "males", "men"]:
+        return "male"
+    if g in ["female", "females", "women"]:
+        return "female"
+    return g
+
+
+def generate_people_docs(people_data):
+    """
+    Converts people data (from markdown) into text chunks for RAG ingestion.
+    Each person becomes a short summary string.
+    """
+    docs = []
+    for person in people_data:
+        name = person.get("name", "N/A")
+        designation = person.get("designation", person.get("designation", "N/A"))
+        department = person.get("department", person.get("department", "N/A"))
+        email = person.get("email", "N/A")
+        mobile = person.get("mobile", person.get("mobile_phone", "N/A"))
+        summary = f"{name}: {designation}, {department}, {email}, {mobile}"
+        docs.append(summary)
+    return docs
