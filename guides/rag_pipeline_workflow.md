@@ -4,13 +4,26 @@ This guide explains the Retrieval-Augmented Generation (RAG) pipeline implemente
 
 ---
 
+## 0. Refreshing the RAG Pipeline (IMPORTANT!)
+
+**Whenever you add, update, or remove markdown files in your knowledge base (docs, docs-api, docs-confluence, etc.), you MUST refresh the RAG pipeline to re-chunk, re-embed, and re-index all data.**
+
+- **How to refresh:**
+  ```bash
+  python refresh_rag.py
+  ```
+- This will delete the old `.pkl` and ChromaDB vector store, and rebuild them from all current markdown files.
+- Always run this after fetching new Confluence data or updating any docs.
+
+---
+
 ## 1. File Preparation
 
 - **Purpose:** Load and read multiple Markdown (`.md`) files from specified directories. These files serve as the source knowledge base (e.g., exported from Confluence, API, or internal docs).
 - **Code Location:** `rag_pipeline.py` → `load_markdown_docs()`
 - **Example Usage:**
   ```python
-  docs = load_markdown_docs(["docs", "docs-api/people", "docs-confluence"])
+  docs = load_markdown_docs(["docs", "docs-api", "docs-confluence/vyaguta", "docs-confluence/leap"])
   ```
 
 ---
@@ -21,7 +34,7 @@ This guide explains the Retrieval-Augmented Generation (RAG) pipeline implemente
 - **Code Location:** `rag_pipeline.py` → `consolidate_and_serialize_docs()` and `load_docs_from_pickle()`
 - **Example Usage:**
   ```python
-  docs = consolidate_and_serialize_docs(["docs", "docs-api/people", "docs-confluence"])
+  docs = consolidate_and_serialize_docs(["docs", "docs-api", "docs-confluence/vyaguta", "docs-confluence/leap"])
   # Later reuse:
   docs = load_docs_from_pickle()
   ```
@@ -62,7 +75,7 @@ This guide explains the Retrieval-Augmented Generation (RAG) pipeline implemente
   - `main.py` → RAG workflow
 - **Example Usage:**
   ```python
-  retriever = setup_rag_pipeline(["docs", "docs-api/people", "docs-confluence"])
+  retriever = setup_rag_pipeline(["docs", "docs-api", "docs-confluence/vyaguta", "docs-confluence/leap"])
   qa_chain = RetrievalQA.from_chain_type(
       llm=llm,
       retriever=retriever,
@@ -82,6 +95,7 @@ This guide explains the Retrieval-Augmented Generation (RAG) pipeline implemente
 3. **Text chunks** are created for optimal embedding.
 4. **Embeddings** are generated and stored in ChromaDB.
 5. **RAG pipeline** retrieves relevant chunks and generates context-aware answers using OpenAI’s LLM.
+6. **Always refresh the RAG pipeline after updating docs!**
 
 ---
 
@@ -90,6 +104,7 @@ This guide explains the Retrieval-Augmented Generation (RAG) pipeline implemente
 - Ensure your `.env` file contains a valid `OPENAI_API_KEY`.
 - If you see ChromaDB warnings about persistence, you can safely ignore them or remove deprecated code as described in this guide.
 - To inspect the process, add print/logging statements in each function to view intermediate results.
+- **Always run `python refresh_rag.py` after updating or adding docs!**
 
 ---
 

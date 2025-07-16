@@ -29,12 +29,18 @@ CHROMA_DIR = "chroma_db"
 def load_markdown_docs(directories=None):
     """
     Loads all Markdown files from specified directories and returns a list of Document objects.
+    Supports nested subfolders (e.g., docs-confluence/vyaguta, docs-confluence/leap).
     """
     if directories is None:
-        directories = ["docs", "docs-confluence"]
+        directories = [
+            "docs",
+            "docs-api",
+            "docs-confluence/vyaguta",
+            "docs-confluence/leap",
+        ]
     all_docs = []
     for directory in directories:
-        for file in glob.glob(f"{directory}/*.md"):
+        for file in glob.glob(f"{directory}/**/*.md", recursive=True):
             loader = UnstructuredMarkdownLoader(file)
             doc = loader.load()
             all_docs.extend(doc)
@@ -101,6 +107,33 @@ def setup_rag_pipeline(directories=None):
         docs = load_docs_from_pickle()
     else:
         docs = consolidate_and_serialize_docs(directories)
+    chunks = chunk_documents(docs)
+    vectorstore = build_chroma_vectorstore(chunks)
+    retriever = get_chroma_retriever(vectorstore)
+    return retriever
+
+
+def refresh_rag_pipeline(directories=None):
+    """
+    Force a full refresh: re-chunk, re-embed, and overwrite the .pkl and ChromaDB vector store.
+    Use this after adding new docs or changing doc paths.
+    """
+    if directories is None:
+        directories = [
+            "docs",
+            "docs-api",
+            "docs-confluence/vyaguta",
+            "docs-confluence/leap",
+        ]
+    # Remove old .pkl and chroma_db if they exist
+    import shutil
+
+    if os.path.exists(DOCS_PICKLE):
+        os.remove(DOCS_PICKLE)
+    if os.path.exists(CHROMA_DIR):
+        shutil.rmtree(CHROMA_DIR)
+    # Rebuild everything
+    docs = consolidate_and_serialize_docs(directories)
     chunks = chunk_documents(docs)
     vectorstore = build_chroma_vectorstore(chunks)
     retriever = get_chroma_retriever(vectorstore)
