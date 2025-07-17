@@ -66,7 +66,7 @@ def load_docs_from_pickle(pickle_path=DOCS_PICKLE):
     return docs
 
 
-def chunk_documents(docs, chunk_size=1000, chunk_overlap=100):
+def chunk_documents(docs, chunk_size=300, chunk_overlap=50):
     """
     Chunks all documents using RecursiveCharacterTextSplitter for optimal embedding.
     Uses a safe chunk size to avoid exceeding embedding API limits.

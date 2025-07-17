@@ -59,26 +59,32 @@ def fetch_person_details_by_id(person_id):
 def save_people_to_markdown(people, out_dir, consolidated_file="people.md"):
     """
     Saves all people data as individual markdown files and a consolidated markdown file for RAG.
-    Each person is serialized with all available fields in a standard format for LLM retrieval.
+    Each person is serialized with all available fields from the API response in a standard format for LLM retrieval.
     """
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     consolidated_md = ""
     for person in people:
+
+        person_id = person.get("id")
+        details = fetch_person_details_by_id(person_id) if person_id else person
+        if not details:
+            details = person
         name_parts = [
-            person.get("firstName", ""),
-            person.get("middleName", ""),
-            person.get("lastName", ""),
+            details.get("firstName", ""),
+            details.get("middleName", ""),
+            details.get("lastName", ""),
         ]
         name = " ".join([n for n in name_parts if n]).strip()
         safe_name = name.replace(" ", "_")
-        emp_id = person.get("empId") or person.get("id")
+        emp_id = details.get("empId") or details.get("id")
         filename = f"{emp_id}_{safe_name}.md"
         path = os.path.join(out_dir, filename)
 
         md = f"# {name}\n\n"
-        for k, v in person.items():
+
+        for k, v in details.items():
             if v not in (None, "None", "Not", "false", "N/A", "", []):
                 md += f"- {k}: {v}\n"
         md += "\n---\n"
