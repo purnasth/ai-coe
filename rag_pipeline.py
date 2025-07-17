@@ -66,9 +66,10 @@ def load_docs_from_pickle(pickle_path=DOCS_PICKLE):
     return docs
 
 
-def chunk_documents(docs, chunk_size=800, chunk_overlap=100):
+def chunk_documents(docs, chunk_size=1000, chunk_overlap=100):
     """
-    Chunks documents using RecursiveCharacterTextSplitter for optimal embedding.
+    Chunks all documents using RecursiveCharacterTextSplitter for optimal embedding.
+    Uses a safe chunk size to avoid exceeding embedding API limits.
     """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap
@@ -91,11 +92,11 @@ def build_chroma_vectorstore(chunks, persist_directory=CHROMA_DIR):
     return vectorstore
 
 
-def get_chroma_retriever(vectorstore):
+def get_chroma_retriever(vectorstore, k=10):
     """
-    Returns a retriever from the Chroma vector store.
+    Returns a retriever from the Chroma vector store, retrieving up to k chunks.
     """
-    return vectorstore.as_retriever()
+    return vectorstore.as_retriever(search_kwargs={"k": k})
 
 
 # --- Main RAG Pipeline Entrypoint ---
@@ -109,7 +110,7 @@ def setup_rag_pipeline(directories=None):
         docs = consolidate_and_serialize_docs(directories)
     chunks = chunk_documents(docs)
     vectorstore = build_chroma_vectorstore(chunks)
-    retriever = get_chroma_retriever(vectorstore)
+    retriever = get_chroma_retriever(vectorstore, k=10)
     return retriever
 
 
@@ -125,6 +126,7 @@ def refresh_rag_pipeline(directories=None):
             "docs-confluence/vyaguta",
             "docs-confluence/leap",
         ]
+
     # Remove old .pkl and chroma_db if they exist
     import shutil
 
@@ -132,9 +134,10 @@ def refresh_rag_pipeline(directories=None):
         os.remove(DOCS_PICKLE)
     if os.path.exists(CHROMA_DIR):
         shutil.rmtree(CHROMA_DIR)
+
     # Rebuild everything
     docs = consolidate_and_serialize_docs(directories)
     chunks = chunk_documents(docs)
     vectorstore = build_chroma_vectorstore(chunks)
-    retriever = get_chroma_retriever(vectorstore)
+    retriever = get_chroma_retriever(vectorstore, k=10)
     return retriever

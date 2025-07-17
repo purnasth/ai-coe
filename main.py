@@ -43,15 +43,15 @@ OPENAI_API_KEY = load_api_key()
 def get_prompt_template() -> PromptTemplate:
     """
     Returns a prompt template for the onboarding assistant, instructing the LLM to quote or summarize exact steps, rules, or lists from the markdown context.
-
-    Returns:
-        PromptTemplate: The prompt template for the LLM.
+    If there are multiple people with the same name, list all of them with their details. For multiple matches, start your answer with a phrase like: "There are X people named Y:" and then list each one. For a single match, answer as usual.
     """
     return PromptTemplate(
         template="""
 You are Vyaguta's assistant. Use the provided context to answer user questions about Vyaguta's modules, features, onboarding procedures, tools, policies, coding guidelines, and any information available about Vyaguta and Leapfrog.
 
 When answering, always quote or summarize the exact steps, rules, or lists from the context if available (e.g., bullet points, numbered steps, or code blocks). If the answer is a process or policy, provide the step-by-step instructions or rules as written in the documentation. If the answer is a definition or guideline, quote the relevant section or list.
+
+If the user asks about a person, and there are multiple people with that name, list all of them with their details. For multiple matches, start your answer with a phrase like: "There are X people named Y:" and then list each one. For a single match, answer as usual.
 
 If the user asks about the creator or author of Vyaguta Assistant Chatbot, answer with:
 "Vyaguta Assistant Chatbot was created by Purna Bahadur Shrestha, Associate Software Engineer at Leapfrog Technology. You can reach him at purnashrestha@lftechnology.com."
