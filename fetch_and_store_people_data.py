@@ -2,21 +2,12 @@ import os
 import sys
 import time
 from dotenv import load_dotenv
+
 import requests
 from config import API_PEOPLE_URL
 from auth import app_startup
-
-
-# --- Debug logging ---
-def debug_log(msg):
-    env = os.getenv("ENV", "local").lower()
-    if env in ("test", "testing"):  # Only show debug logs in test/testing
-        print(f"[DEBUG {time.strftime('%H:%M:%S')}] {msg}")
-
-
-# --- Output helper ---
-def output_log(msg):
-    print(f"[OUTPUT] {msg}")
+from log_utils import debug_log, output_log
+from config import PEOPLE_MD_DIR
 
 
 load_dotenv()
@@ -86,7 +77,6 @@ def save_people_to_markdown(people, out_dir, consolidated_file="people.md"):
     Each person is serialized with all available fields from the API response in a standard format for LLM retrieval.
     """
 
-    # SIMPLIFIED: Only generate a single consolidated people.md file (no per-person files)
     debug_log(
         f"Saving all people to a single markdown file: {os.path.join(out_dir, consolidated_file)}"
     )
@@ -118,13 +108,14 @@ def save_people_to_markdown(people, out_dir, consolidated_file="people.md"):
 
 
 def main():
+
     debug_log("Starting app_startup() for authentication...")
     app_startup()
     debug_log("Authentication complete.")
     debug_log("Fetching people data...")
     people = fetch_all_people()
     debug_log("Saving people data to markdown...")
-    save_people_to_markdown(people, "docs-api/people/")
+    save_people_to_markdown(people, PEOPLE_MD_DIR)
     output_log("All people data fetched and saved.")
 
 

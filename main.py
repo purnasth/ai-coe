@@ -20,6 +20,7 @@ from langchain.prompts import PromptTemplate
 from auth import app_startup
 from rag_pipeline import setup_rag_pipeline
 from log_utils import debug_log, output_log
+from config import DOC_DIRECTORIES
 
 
 # --- Authenticate and refresh Vyaguta access token at startup ---
@@ -29,9 +30,8 @@ debug_log("Authentication complete")
 
 # --- Setup RAG pipeline with Chroma retriever ---
 debug_log("Setting up RAG pipeline")
-retriever = setup_rag_pipeline(
-    ["docs", "docs-api/people", "docs-confluence"], force_rebuild=False
-)
+
+retriever = setup_rag_pipeline(DOC_DIRECTORIES, force_rebuild=False)
 debug_log("RAG pipeline setup complete")
 
 
