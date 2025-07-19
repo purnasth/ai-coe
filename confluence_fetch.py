@@ -1,3 +1,4 @@
+from log_utils import debug_log, output_log
 import os
 import requests
 from markdownify import markdownify as md
@@ -17,7 +18,7 @@ SPACE_KEYS = [k.strip() for k in SPACE_KEYS if k.strip()]
 OUTPUT_DIR = "docs-confluence"
 
 if not CONFLUENCE_BASE_URL or not EMAIL or not API_TOKEN:
-    print(
+    output_log(
         "Please add CONFLUENCE_BASE_URL, CONFLUENCE_EMAIL, and CONFLUENCE_API_TOKEN to your .env file."
     )
     exit(1)
@@ -28,7 +29,7 @@ def get_space_key():
         return SPACE_KEY
     space_key = input("Enter your Confluence space key (e.g., HR, DEV, ENG): ").strip()
     if not space_key:
-        print("Space key is required.")
+        output_log("Space key is required.")
         exit(1)
     return space_key
 
@@ -58,7 +59,7 @@ def fetch_and_save_page(page_id, title, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, filename), "w", encoding="utf-8") as f:
         f.write(md_content)
-    print(f"Saved: {filename} in {output_dir}")
+    output_log(f"Saved: {filename} in {output_dir}")
 
 
 def get_all_pages(space_key):
@@ -76,7 +77,7 @@ def get_all_pages(space_key):
 
     def fetch_page_and_children(page, depth=0):
         if depth > MAX_DEPTH:
-            print(
+            output_log(
                 f"Maximum depth of {MAX_DEPTH} reached for page {page['id']} ({page['title']}). Skipping further recursion."
             )
             return
@@ -110,14 +111,16 @@ def get_all_pages(space_key):
 def main():
     for space_key in SPACE_KEYS:
         output_dir = os.path.join("docs-confluence", space_key.lower())
-        print(f"Fetching ALL pages (including subpages) from space: {space_key}")
+        output_log(f"Fetching ALL pages (including subpages) from space: {space_key}")
         pages = get_all_pages(space_key)
         if not pages:
-            print(f"No pages found in space {space_key} or you may not have access.")
+            output_log(
+                f"No pages found in space {space_key} or you may not have access."
+            )
             continue
         for page_id, title in pages:
             fetch_and_save_page(page_id, title, output_dir)
-        print(
+        output_log(
             f"All pages and subpages fetched and saved as markdown in the {output_dir}/ folder."
         )
 

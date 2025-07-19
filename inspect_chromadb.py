@@ -4,6 +4,7 @@ Usage:
     python inspect_chromadb.py
 """
 
+from log_utils import debug_log, output_log
 from langchain_chroma import Chroma
 from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
@@ -22,15 +23,14 @@ def main():
     # Try to get all stored documents/chunks
     try:
         docs = vectorstore.get()
-        print(f"Total chunks stored: {len(docs['documents'])}")
+        output_log(f"Total chunks stored: {len(docs['documents'])}")
         for i, doc in enumerate(docs["documents"]):
-            print(f"\n--- Chunk {i+1} ---")
-            print(doc)
-
+            output_log(f"--- Chunk {i+1} ---")
+            output_log(doc)
             if "metadatas" in docs:
-                print("Metadata:", docs["metadatas"][i])
+                output_log(f"Metadata: {docs['metadatas'][i]}")
     except Exception as e:
-        print("Error inspecting ChromaDB:", e)
+        output_log(f"Error inspecting ChromaDB: {e}")
 
 
 if __name__ == "__main__":

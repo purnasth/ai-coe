@@ -13,12 +13,15 @@ import os
 import glob
 import pickle
 from dotenv import load_dotenv
-
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
+
+from log_utils import debug_log, output_log
+from config import DOC_DIRECTORIES
+
 
 load_dotenv()
 
@@ -32,12 +35,7 @@ def load_markdown_docs(directories=None):
     Supports nested subfolders (e.g., docs-confluence/vyaguta, docs-confluence/leap).
     """
     if directories is None:
-        directories = [
-            "docs",
-            "docs-api",
-            "docs-confluence/vyaguta",
-            "docs-confluence/leap",
-        ]
+        directories = DOC_DIRECTORIES
     all_docs = []
     for directory in directories:
         for file in glob.glob(f"{directory}/**/*.md", recursive=True):
@@ -66,18 +64,36 @@ def load_docs_from_pickle(pickle_path=DOCS_PICKLE):
     return docs
 
 
-def chunk_documents(docs, chunk_size=1000, chunk_overlap=50):
+def chunk_documents(docs, chunk_size=1000, chunk_overlap=200, max_chars=2000):
     """
     Chunks all documents using RecursiveCharacterTextSplitter for optimal embedding.
-    Uses a safe chunk size to avoid exceeding embedding API limits.
+    Uses a conservative chunk size and overlap to keep tables and context together, but ensures no chunk exceeds max_chars.
     """
+    from config import CHUNK_SIZE, CHUNK_OVERLAP, MAX_CHARS
+
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
     )
     chunks = []
+    max_found = 0
     for doc in docs:
         for chunk in splitter.split_text(doc.page_content):
-            chunks.append(Document(page_content=chunk, metadata=doc.metadata))
+            # If chunk is too large, split further
+            if len(chunk) > MAX_CHARS:
+                sub_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=MAX_CHARS // 2, chunk_overlap=CHUNK_OVERLAP // 2
+                )
+                for sub_chunk in sub_splitter.split_text(chunk):
+                    chunks.append(
+                        Document(page_content=sub_chunk, metadata=doc.metadata)
+                    )
+                    if len(sub_chunk) > max_found:
+                        max_found = len(sub_chunk)
+            else:
+                chunks.append(Document(page_content=chunk, metadata=doc.metadata))
+                if len(chunk) > max_found:
+                    max_found = len(chunk)
+    debug_log(f"Largest chunk size: {max_found} characters")
     return chunks
 
 
@@ -85,18 +101,34 @@ def build_chroma_vectorstore(chunks, persist_directory=CHROMA_DIR):
     """
     Embeds chunks and stores them in a Chroma vector database.
     """
+    # To avoid OpenAI's max tokens per request error, reduce the number of chunks per batch
+    # We'll break the chunks into smaller batches and add them incrementally
     embeddings = OpenAIEmbeddings()
-    vectorstore = Chroma.from_documents(
-        chunks, embeddings, persist_directory=persist_directory
-    )
-    return vectorstore
+    from math import ceil
+
+    from config import BATCH_SIZE
+
+    batch_size = BATCH_SIZE
+    all_vectorstore = None
+
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i : i + batch_size]
+        if all_vectorstore is None:
+            all_vectorstore = Chroma.from_documents(
+                batch, embeddings, persist_directory=persist_directory
+            )
+        else:
+            all_vectorstore.add_documents(batch)
+    return all_vectorstore
 
 
 def get_chroma_retriever(vectorstore, k=10):
     """
     Returns a retriever from the Chroma vector store, retrieving up to k chunks.
     """
-    return vectorstore.as_retriever(search_kwargs={"k": k})
+    from config import RETRIEVER_K
+
+    return vectorstore.as_retriever(search_kwargs={"k": RETRIEVER_K})
 
 
 # --- Main RAG Pipeline Entrypoint ---
@@ -112,8 +144,15 @@ def setup_rag_pipeline(directories=None, force_rebuild=False):
         vectorstore = Chroma(
             persist_directory=CHROMA_DIR, embedding_function=OpenAIEmbeddings()
         )
-        retriever = get_chroma_retriever(vectorstore, k=10)
-        return retriever
+        try:
+            retriever = get_chroma_retriever(vectorstore)
+            _ = retriever.get_relevant_documents("test")
+            debug_log("Retrieval with k=40 succeeded.")
+            return retriever
+        except Exception as e:
+            debug_log(f"Retrieval with k=40 failed: {e}. Falling back to k=20.")
+            retriever = get_chroma_retriever(vectorstore)
+            return retriever
 
     # Otherwise, build everything
     if os.path.exists(DOCS_PICKLE):
@@ -122,8 +161,16 @@ def setup_rag_pipeline(directories=None, force_rebuild=False):
         docs = consolidate_and_serialize_docs(directories)
     chunks = chunk_documents(docs)
     vectorstore = build_chroma_vectorstore(chunks)
-    retriever = get_chroma_retriever(vectorstore, k=10)
-    return retriever
+    # Try k=30 first
+    try:
+        retriever = get_chroma_retriever(vectorstore)
+        _ = retriever.get_relevant_documents("test")
+        debug_log("Retrieval with k=30 succeeded.")
+        return retriever
+    except Exception as e:
+        debug_log(f"Retrieval with k=30 failed: {e}. Falling back to k=20.")
+        retriever = get_chroma_retriever(vectorstore)
+        return retriever
 
 
 def refresh_rag_pipeline(directories=None):
@@ -132,12 +179,7 @@ def refresh_rag_pipeline(directories=None):
     Use this after adding new docs or changing doc paths.
     """
     if directories is None:
-        directories = [
-            "docs",
-            "docs-api",
-            "docs-confluence/vyaguta",
-            "docs-confluence/leap",
-        ]
+        directories = DOC_DIRECTORIES
 
     # Remove old .pkl and chroma_db if they exist
     import shutil
@@ -151,5 +193,13 @@ def refresh_rag_pipeline(directories=None):
     docs = consolidate_and_serialize_docs(directories)
     chunks = chunk_documents(docs)
     vectorstore = build_chroma_vectorstore(chunks)
-    retriever = get_chroma_retriever(vectorstore, k=10)
-    return retriever
+    # Try k=30 first
+    try:
+        retriever = get_chroma_retriever(vectorstore)
+        _ = retriever.get_relevant_documents("test")
+        debug_log("Retrieval with k=30 succeeded.")
+        return retriever
+    except Exception as e:
+        debug_log(f"Retrieval with k=30 failed: {e}. Falling back to k=20.")
+        retriever = get_chroma_retriever(vectorstore)
+        return retriever

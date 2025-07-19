@@ -19,3 +19,7 @@ chroma_db/
 # virtual environment directories
 venv/
 .venv/
+
+# docs consolidated files
+docs-consolidated/
+docs_consolidated.pkl
