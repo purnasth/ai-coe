@@ -19,10 +19,7 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from auth import app_startup
 from rag_pipeline import setup_rag_pipeline
-
-# --- Debug logging ---
-def debug_log(msg):
-    print(f"[DEBUG {time.strftime('%H:%M:%S')}] {msg}")
+from log_utils import debug_log, output_log
 
 
 # --- Authenticate and refresh Vyaguta access token at startup ---
@@ -32,7 +29,9 @@ debug_log("Authentication complete")
 
 # --- Setup RAG pipeline with Chroma retriever ---
 debug_log("Setting up RAG pipeline")
-retriever = setup_rag_pipeline(["docs", "docs-api/people", "docs-confluence"], force_rebuild=False)
+retriever = setup_rag_pipeline(
+    ["docs", "docs-api/people", "docs-confluence"], force_rebuild=False
+)
 debug_log("RAG pipeline setup complete")
 
 
@@ -64,10 +63,10 @@ You are Vyaguta's assistant. Use the provided context to answer user questions a
 
 When answering about a person:
 - For general introduction queries (e.g., "Who is Purna?"), always respond in the following format:
-  "{{Full Name}} is a {{Designation}} at Leapfrog Technology, currently working in the {{Department}} department. They joined the company on {{Join Date}} and contribute within the {{Area}}. Based in {{Address}}, {{Full Name}} is a {{Scheduled Type}} team member working {{Working Shift}}. {{He/She}} is recognized for {{short summary of skills or qualities}}. You can reach {{him/her}} via email at {{Email}} or on mobile at {{Mobile Phone}}."
+  "{{Full Name}} is a {{Designation}} at Leapfrog Technology, currently working in the {{Department}} department. They joined the company on {{Join Date}} and contribute within the {{Area}}. Based in {{Address}}, {{Full Name}} is a {{Scheduled Type}} team member working {{Working Shift}}. You can reach {{him/her}} via email at {{Email}} or on mobile at {{Mobile Phone}}."
 - Summarize skills and qualities briefly (e.g., "recognized for technical aptitude, creative mindset, and collaborative spirit").
 - Do not include employee ID, contract type, GitHub ID, or other details unless specifically requested.
-- If the user asks for detailed information (e.g., skills, GitHub, marital status, past experience, emergency contacts, etc.), provide those details in a readable format, using all available data from the context.
+- If the user asks for detailed information, provide those details in a readable format, using all available data from the context.
 - If the query matches multiple people, start with: "There are X people named Y:" only if X > 1, and list each with their introduction as above.
 - If the query matches exactly one person, simply introduce them as above.
 - If no matches are found, politely say you do not have information about that person.
@@ -78,6 +77,14 @@ If the user asks about the creator or author of Vyaguta Assistant Chatbot (the a
 If you are unsure or cannot find the answer in the provided context, politely say you are not sure or do not know. If you have already told the user you do not know for a similar question before, then suggest they visit these official resources for more information:
 - Vyaguta Portal: https://vyaguta.lftechnology.com/
 - Vyaguta Wiki: https://lftechnology.atlassian.net/wiki/spaces/VYAGUTA/overview
+
+PROMOTION YEAR/QUARTER INSTRUCTIONS (IMPORTANT):
+If the user asks about promotions in a year (e.g., "Did anyone get promoted in 2025?"), and the context contains promotions for specific quarters of that year (e.g., Q3 2025), you MUST:
+- Treat all quarters in that year as part of the year and use all available quarter data to answer.
+- If only some quarters are present, answer based on those and EXPLICITLY state in your answer which quarters are available and that you are providing information for those quarters only.
+- Always explain this mapping from year to quarters in your answer, e.g., "The following promotions are for Q3 2025, which is part of 2025."
+- If data is incomplete for the year, add a disclaimer such as "This may not include all promotions for 2025, only those for the available quarters."
+- List the relevant promotions if possible, citing your sources.
 
 Always be helpful, concise, and polite. If the answer is not in the context, respond with a polite message such as "I'm not sure about that based on the current information." Only after repeated uncertainty (i.e., if you have already said you do not know), provide the above links.
 
@@ -129,6 +136,7 @@ def build_qa_chain(llm, retriever, prompt):
         retriever=retriever,
         chain_type="stuff",
         chain_type_kwargs={"prompt": prompt},
+        return_source_documents=True,
     )
     debug_log("QA chain built")
     return chain
@@ -230,6 +238,27 @@ Answer:
                             answer = str(general_answer)
                 except Exception:
                     pass
+
+        # ---
+        # Show sources for every answer (with debug info)
+        source_docs = result.get("source_documents", [])
+        debug_log(f"source_documents: {source_docs}")
+        sources = set()
+        for doc in source_docs:
+            meta = getattr(doc, "metadata", {})
+            src = meta.get("source")
+            if src:
+                # Normalize to top-level folder (docs, docs-api, docs-confluence, etc.)
+                src_folder = src.split("/")[0]
+                sources.add(src_folder)
+        env = os.getenv("ENV", "local").lower()
+        if env != "production":
+            if sources:
+                sources_str = ", ".join(sorted(sources))
+                answer += f"\n\n[SOURCE: {sources_str}]"
+            else:
+                answer += "\n\n[SOURCE: Unknown]"
+
         answer_header = (
             color_text("\nAssistant:", Fore.MAGENTA + Style.BRIGHT)
             if COLORAMA

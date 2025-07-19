@@ -13,7 +13,7 @@ import os
 import glob
 import pickle
 from dotenv import load_dotenv
-
+from log_utils import debug_log, output_log
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -66,18 +66,34 @@ def load_docs_from_pickle(pickle_path=DOCS_PICKLE):
     return docs
 
 
-def chunk_documents(docs, chunk_size=1000, chunk_overlap=50):
+def chunk_documents(docs, chunk_size=1000, chunk_overlap=200, max_chars=2000):
     """
     Chunks all documents using RecursiveCharacterTextSplitter for optimal embedding.
-    Uses a safe chunk size to avoid exceeding embedding API limits.
+    Uses a conservative chunk size and overlap to keep tables and context together, but ensures no chunk exceeds max_chars.
     """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap
     )
     chunks = []
+    max_found = 0
     for doc in docs:
         for chunk in splitter.split_text(doc.page_content):
-            chunks.append(Document(page_content=chunk, metadata=doc.metadata))
+            # If chunk is too large, split further
+            if len(chunk) > max_chars:
+                sub_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=max_chars // 2, chunk_overlap=chunk_overlap // 2
+                )
+                for sub_chunk in sub_splitter.split_text(chunk):
+                    chunks.append(
+                        Document(page_content=sub_chunk, metadata=doc.metadata)
+                    )
+                    if len(sub_chunk) > max_found:
+                        max_found = len(sub_chunk)
+            else:
+                chunks.append(Document(page_content=chunk, metadata=doc.metadata))
+                if len(chunk) > max_found:
+                    max_found = len(chunk)
+    debug_log(f"Largest chunk size: {max_found} characters")
     return chunks
 
 
@@ -85,11 +101,24 @@ def build_chroma_vectorstore(chunks, persist_directory=CHROMA_DIR):
     """
     Embeds chunks and stores them in a Chroma vector database.
     """
+    # To avoid OpenAI's max tokens per request error, reduce the number of chunks per batch
+    # We'll break the chunks into smaller batches and add them incrementally
     embeddings = OpenAIEmbeddings()
-    vectorstore = Chroma.from_documents(
-        chunks, embeddings, persist_directory=persist_directory
+    from math import ceil
+
+    batch_size = (
+        40  # Lower batch size to keep total tokens per request well below 300,000
     )
-    return vectorstore
+    all_vectorstore = None
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i : i + batch_size]
+        if all_vectorstore is None:
+            all_vectorstore = Chroma.from_documents(
+                batch, embeddings, persist_directory=persist_directory
+            )
+        else:
+            all_vectorstore.add_documents(batch)
+    return all_vectorstore
 
 
 def get_chroma_retriever(vectorstore, k=10):
@@ -112,8 +141,15 @@ def setup_rag_pipeline(directories=None, force_rebuild=False):
         vectorstore = Chroma(
             persist_directory=CHROMA_DIR, embedding_function=OpenAIEmbeddings()
         )
-        retriever = get_chroma_retriever(vectorstore, k=10)
-        return retriever
+        try:
+            retriever = get_chroma_retriever(vectorstore, k=40)
+            _ = retriever.get_relevant_documents("test")
+            print("[DEBUG] Retrieval with k=40 succeeded.")
+            return retriever
+        except Exception as e:
+            print(f"[DEBUG] Retrieval with k=40 failed: {e}. Falling back to k=20.")
+            retriever = get_chroma_retriever(vectorstore, k=20)
+            return retriever
 
     # Otherwise, build everything
     if os.path.exists(DOCS_PICKLE):
@@ -122,8 +158,16 @@ def setup_rag_pipeline(directories=None, force_rebuild=False):
         docs = consolidate_and_serialize_docs(directories)
     chunks = chunk_documents(docs)
     vectorstore = build_chroma_vectorstore(chunks)
-    retriever = get_chroma_retriever(vectorstore, k=10)
-    return retriever
+    # Try k=30 first
+    try:
+        retriever = get_chroma_retriever(vectorstore, k=30)
+        _ = retriever.get_relevant_documents("test")
+        print("[DEBUG] Retrieval with k=30 succeeded.")
+        return retriever
+    except Exception as e:
+        print(f"[DEBUG] Retrieval with k=30 failed: {e}. Falling back to k=20.")
+        retriever = get_chroma_retriever(vectorstore, k=20)
+        return retriever
 
 
 def refresh_rag_pipeline(directories=None):
@@ -151,5 +195,13 @@ def refresh_rag_pipeline(directories=None):
     docs = consolidate_and_serialize_docs(directories)
     chunks = chunk_documents(docs)
     vectorstore = build_chroma_vectorstore(chunks)
-    retriever = get_chroma_retriever(vectorstore, k=10)
-    return retriever
+    # Try k=30 first
+    try:
+        retriever = get_chroma_retriever(vectorstore, k=30)
+        _ = retriever.get_relevant_documents("test")
+        print("[DEBUG] Retrieval with k=30 succeeded.")
+        return retriever
+    except Exception as e:
+        print(f"[DEBUG] Retrieval with k=30 failed: {e}. Falling back to k=20.")
+        retriever = get_chroma_retriever(vectorstore, k=20)
+        return retriever

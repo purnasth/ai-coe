@@ -5,6 +5,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import os
 import threading
+from log_utils import debug_log, output_log
 
 WATCHED_EXTENSIONS = [".py"]
 EXCLUDE_DIRS = {"__pycache__", ".venv", "chroma_db"}
@@ -47,7 +48,9 @@ class RestartOnChangeHandler(FileSystemEventHandler):
             __file__
         ):
             return
-        print(f"Detected change in {event.src_path}, scheduling restart of main.py...")
+        output_log(
+            f"Detected change in {event.src_path}, scheduling restart of main.py..."
+        )
         self._debounced_restart()
 
     def stop(self):
@@ -66,12 +69,12 @@ if __name__ == "__main__":
     observer = Observer()
     observer.schedule(event_handler, path=path, recursive=True)
     observer.start()
-    print(f"Watching for changes in {path}. Press Ctrl+C to stop.")
+    output_log(f"Watching for changes in {path}. Press Ctrl+C to stop.")
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Stopping watcher...")
+        output_log("Stopping watcher...")
         observer.stop()
         event_handler.stop()
     observer.join()
