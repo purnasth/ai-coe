@@ -12,6 +12,7 @@ All major functions and classes are documented with docstrings for clarity and m
 """
 
 import os
+import time
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.chains import RetrievalQA
@@ -19,11 +20,20 @@ from langchain.prompts import PromptTemplate
 from auth import app_startup
 from rag_pipeline import setup_rag_pipeline
 
+# --- Debug logging ---
+def debug_log(msg):
+    print(f"[DEBUG {time.strftime('%H:%M:%S')}] {msg}")
+
+
 # --- Authenticate and refresh Vyaguta access token at startup ---
+debug_log("Starting authentication (app_startup)")
 app_startup()
+debug_log("Authentication complete")
 
 # --- Setup RAG pipeline with Chroma retriever ---
-retriever = setup_rag_pipeline(["docs", "docs-api/people", "docs-confluence"])
+debug_log("Setting up RAG pipeline")
+retriever = setup_rag_pipeline(["docs", "docs-api/people", "docs-confluence"], force_rebuild=False)
+debug_log("RAG pipeline setup complete")
 
 
 def load_api_key() -> str:
@@ -33,8 +43,11 @@ def load_api_key() -> str:
     Returns:
         str: The OpenAI API key.
     """
+    debug_log("Loading OpenAI API key")
     load_dotenv()
-    return os.getenv("OPENAI_API_KEY")
+    key = os.getenv("OPENAI_API_KEY")
+    debug_log("Loaded OpenAI API key")
+    return key
 
 
 OPENAI_API_KEY = load_api_key()
@@ -90,7 +103,10 @@ def get_llm(api_key: str):
     Returns:
         ChatOpenAI: The LLM instance.
     """
-    return ChatOpenAI(openai_api_key=api_key, temperature=0.2, model="gpt-4.1-nano")
+    debug_log("Initializing LLM")
+    llm = ChatOpenAI(openai_api_key=api_key, temperature=0.2, model="gpt-4.1-nano")
+    debug_log("LLM initialized")
+    return llm
 
 
 llm = get_llm(OPENAI_API_KEY)
@@ -107,12 +123,15 @@ def build_qa_chain(llm, retriever, prompt):
     Returns:
         RetrievalQA: The QA chain for answering questions.
     """
-    return RetrievalQA.from_chain_type(
+    debug_log("Building QA chain")
+    chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
         chain_type="stuff",
         chain_type_kwargs={"prompt": prompt},
     )
+    debug_log("QA chain built")
+    return chain
 
 
 qa_chain = build_qa_chain(llm, retriever, prompt)
@@ -122,6 +141,7 @@ def main():
     """
     Runs the Vyaguta Assistant Chatbot in a terminal chat loop.
     """
+    debug_log("Entering main chat loop")
     import sys
 
     try:
@@ -151,12 +171,14 @@ def main():
             if COLORAMA
             else "\nYou > "
         )
+        debug_log("Waiting for user input")
         question = input(user_prompt)
+        debug_log(f"User input: {question}")
         if question.strip().lower() == "exit":
             break
-
-        # --- All queries handled by RAG pipeline ---
+        debug_log("Invoking QA chain")
         result = qa_chain.invoke({"query": question})
+        debug_log("QA chain invocation complete")
         answer = result["result"]
         unsure_phrases = [
             "I'm not sure about that based on the current information",
@@ -214,6 +236,7 @@ Answer:
             else "\nAssistant:"
         )
         answer_body = color_text(answer, Fore.YELLOW) if COLORAMA else answer
+        debug_log("Answer ready, printing to user")
         print(answer_header)
         print(answer_body)
 

@@ -18,7 +18,7 @@ from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 
 load_dotenv()
 
@@ -100,10 +100,22 @@ def get_chroma_retriever(vectorstore, k=10):
 
 
 # --- Main RAG Pipeline Entrypoint ---
-def setup_rag_pipeline(directories=None):
+def setup_rag_pipeline(directories=None, force_rebuild=False):
     """
     Loads, chunks, embeds, and sets up Chroma retriever for RAG.
+    If force_rebuild is True, always rebuilds the index and pickle.
     """
+    if force_rebuild:
+        return refresh_rag_pipeline(directories)
+    # If ChromaDB exists, just load it (fast!)
+    if os.path.exists(CHROMA_DIR) and os.path.exists(DOCS_PICKLE):
+        vectorstore = Chroma(
+            persist_directory=CHROMA_DIR, embedding_function=OpenAIEmbeddings()
+        )
+        retriever = get_chroma_retriever(vectorstore, k=10)
+        return retriever
+
+    # Otherwise, build everything
     if os.path.exists(DOCS_PICKLE):
         docs = load_docs_from_pickle()
     else:

@@ -1,115 +1,124 @@
 # Vyaguta Assistant RAG Pipeline Workflow
 
-This guide explains the Retrieval-Augmented Generation (RAG) pipeline implemented in the Vyaguta Assistant project, using LangChain, OpenAI, and ChromaDB. It covers each step from file preparation to answering user queries with context-aware responses.
+This guide explains the Retrieval-Augmented Generation (RAG) pipeline in the Vyaguta Assistant project, using LangChain, OpenAI, and ChromaDB. It now reflects the optimized workflow where the ChromaDB vector store is only rebuilt when needed, resulting in much faster chatbot startup.
 
 ---
 
-## 0. Refreshing the RAG Pipeline (IMPORTANT!)
+## Why This Change?
 
-**Whenever you add, update, or remove markdown files in your knowledge base (docs, docs-api, docs-confluence, etc.), you MUST refresh the RAG pipeline to re-chunk, re-embed, and re-index all data.**
+**Previous behavior:**
 
-- **How to refresh:**
-  ```bash
-  python refresh_rag.py
-  ```
+- The RAG pipeline (ChromaDB index and embeddings) was rebuilt every time you started the chatbot, causing slow startup (several minutes) even if the data had not changed.
+
+**New behavior:**
+
+- The RAG pipeline is only rebuilt when you explicitly update your docs and run the build script.
+- On normal chatbot runs, the existing ChromaDB index and pickle are loaded instantly, making startup nearly immediate.
+
+**Benefits:**
+
+- Fast chatbot startup (seconds, not minutes)
+- No unnecessary recomputation or API calls
+- Only update the index when your data changes
+
+---
+
+## Key Scripts and Their Roles
+
+- **rag_pipeline.py**: Contains all the core functions for loading, chunking, embedding, and managing the ChromaDB vector store. You do NOT run this file directly. It is imported and used by the other scripts.
+- **rebuild_rag_pipeline.py**: The main script to rebuild the RAG pipeline index. Run this whenever you add, update, or remove markdown files. (Preferred entrypoint)
+- **main.py**: The chatbot entrypoint. Loads the existing index for fast startup and serves the assistant.
+- **inspect_chromadb.py**: Lets you inspect the contents of your ChromaDB vector store for debugging or auditing.
+
+---
+
+## Workflow Overview
+
+### 1. Build/Refresh the RAG Index (Only When Docs Change)
+
+Whenever you add, update, or remove markdown files in your knowledge base (`docs`, `docs-api`, `docs-confluence`, etc.), you MUST rebuild the RAG pipeline to re-chunk, re-embed, and re-index all data.
+
+**How to refresh/build:**
+
+```bash
+python rebuild_rag_pipeline.py
+```
+
 - This will delete the old `.pkl` and ChromaDB vector store, and rebuild them from all current markdown files.
-- Always run this after fetching new Confluence data or updating any docs.
+- Only run this when your docs change!
 
 ---
 
-## 1. File Preparation
+### 2. Start the Chatbot (Fast Startup)
 
-- **Purpose:** Load and read multiple Markdown (`.md`) files from specified directories. These files serve as the source knowledge base (e.g., exported from Confluence, API, or internal docs).
-- **Code Location:** `rag_pipeline.py` → `load_markdown_docs()`
-- **Example Usage:**
-  ```python
-  docs = load_markdown_docs(["docs", "docs-api", "docs-confluence/vyaguta", "docs-confluence/leap"])
-  ```
+For normal chatbot use, just run:
 
----
+```bash
+python main.py
+```
 
-## 2. Document Consolidation & Serialization
-
-- **Purpose:** Merge the contents of all Markdown files into a single list of LangChain `Document` objects, and serialize it as a `.pkl` file for reuse and performance optimization.
-- **Code Location:** `rag_pipeline.py` → `consolidate_and_serialize_docs()` and `load_docs_from_pickle()`
-- **Example Usage:**
-  ```python
-  docs = consolidate_and_serialize_docs(["docs", "docs-api", "docs-confluence/vyaguta", "docs-confluence/leap"])
-  # Later reuse:
-  docs = load_docs_from_pickle()
-  ```
-- **Result:** Creates `docs_consolidated.pkl` in your project directory.
+- This will load the existing ChromaDB index and pickle.
+- Startup is nearly instant if the index exists.
+- No re-indexing or re-embedding is performed unless you deleted the index or changed the docs.
 
 ---
 
-## 3. Text Chunking
+### 3. Inspecting the Vector Store
 
-- **Purpose:** Use LangChain’s `RecursiveCharacterTextSplitter` to divide the consolidated document into smaller, contextually meaningful chunks optimized for embedding.
-- **Code Location:** `rag_pipeline.py` → `chunk_documents()`
-- **Example Usage:**
-  ```python
-  chunks = chunk_documents(docs, chunk_size=800, chunk_overlap=100)
-  ```
+To see what is stored in your ChromaDB vector store:
 
----
+```bash
+python inspect_chromadb.py
+```
 
-## 4. Embedding & Vector Store
-
-- **Purpose:** Generate embeddings for the text chunks using OpenAI Embeddings (or another embedding model) and store them in a Chroma vector database using LangChain’s vector store integration.
-- **Code Location:** `rag_pipeline.py` → `build_chroma_vectorstore()`
-- **Example Usage:**
-  ```python
-  vectorstore = build_chroma_vectorstore(chunks, persist_directory="chroma_db")
-  ```
-- **Result:** Creates/updates the `chroma_db` directory for fast semantic search.
+- Prints all stored document chunks and their metadata.
+- Useful for debugging and auditing your knowledge base.
 
 ---
 
-## 5. RAG Pipeline Setup & Usage
+## Typical Workflow
 
-- **Purpose:** Set up a Retrieval-Augmented Generation (RAG) flow with LangChain where:
-  - The Chroma vector store is used as a retriever.
-  - Retrieved chunks are passed along with the user query to OpenAI’s LLM to generate an answer with context.
-- **Code Location:**
-  - `rag_pipeline.py` → `setup_rag_pipeline()`
-  - `main.py` → RAG workflow
-- **Example Usage:**
-  ```python
-  retriever = setup_rag_pipeline(["docs", "docs-api", "docs-confluence/vyaguta", "docs-confluence/leap"])
-  qa_chain = RetrievalQA.from_chain_type(
-      llm=llm,
-      retriever=retriever,
-      chain_type="stuff",
-      chain_type_kwargs={"prompt": prompt},
-  )
-  result = qa_chain.invoke({"query": user_question})
-  answer = result["result"]
-  ```
+1. **Update docs** (add, edit, or remove markdown files)
+2. **Rebuild index**:
+   ```bash
+   python rebuild_rag_pipeline.py
+   ```
+3. **Start chatbot**:
+   ```bash
+   python main.py
+   ```
+4. **(Optional) Inspect vector store**:
+   ```bash
+   python inspect_chromadb.py
+   ```
 
 ---
 
-## Workflow Summary
+## FAQ
 
-1. **Markdown files** are loaded from knowledge base directories.
-2. **Documents** are merged and serialized for fast reuse.
-3. **Text chunks** are created for optimal embedding.
-4. **Embeddings** are generated and stored in ChromaDB.
-5. **RAG pipeline** retrieves relevant chunks and generates context-aware answers using OpenAI’s LLM.
-6. **Always refresh the RAG pipeline after updating docs!**
+**Q: Why not rebuild the index every time?**
+A: Rebuilding is slow and uses API calls. Most of the time, your docs do not change, so you should reuse the existing index for fast startup.
 
----
+**Q: When do I need to rebuild?**
+A: Only when you add, update, or remove markdown files in your knowledge base.
 
-## Troubleshooting & Tips
+**Q: What if I forget to rebuild?**
+A: The chatbot will use the old index and not see your latest changes. Always rebuild after updating docs.
 
-- Ensure your `.env` file contains a valid `OPENAI_API_KEY`.
-- If you see ChromaDB warnings about persistence, you can safely ignore them or remove deprecated code as described in this guide.
-- To inspect the process, add print/logging statements in each function to view intermediate results.
-- **Always run `python refresh_rag.py` after updating or adding docs!**
+**Q: Can I automate the rebuild?**
+A: Yes, you can add a watcher or script to trigger `rebuild_rag_pipeline.py` when docs change, but for most workflows, manual rebuild is sufficient.
+
+**Q: Should I run rag_pipeline.py directly?**
+A: No. This file only contains the pipeline logic and is used by the other scripts. Do not run it as a script.
 
 ---
 
 ## References
 
-- [LangChain Documentation](https://python.langchain.com/docs/)
 - [ChromaDB Documentation](https://docs.trychroma.com/)
+- [LangChain Vector Stores](https://python.langchain.com/docs/integrations/vectorstores/chroma)
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference/introduction)
+
+---
+
+_Last updated: July 2025 — reflects optimized, fast-startup RAG pipeline logic and script usage._
