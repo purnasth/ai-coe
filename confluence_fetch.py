@@ -72,17 +72,24 @@ def get_all_pages(space_key):
     headers = {"Accept": "application/json"}
     all_pages = []
     seen_ids = set()
+    MAX_DEPTH = 20
 
-    def fetch_page_and_children(page):
+    def fetch_page_and_children(page, depth=0):
+        if depth > MAX_DEPTH:
+            print(
+                f"Maximum depth of {MAX_DEPTH} reached for page {page['id']} ({page['title']}). Skipping further recursion."
+            )
+            return
         page_id = page["id"]
         title = page["title"]
-        if page_id not in seen_ids:
-            all_pages.append((page_id, title))
-            seen_ids.add(page_id)
+        if page_id in seen_ids:
+            return
+        seen_ids.add(page_id)  # Mark the page as seen before processing
+        all_pages.append((page_id, title))
         # Recursively fetch children
         children = page.get("children", {}).get("page", {}).get("results", [])
         for child in children:
-            fetch_page_and_children(child)
+            fetch_page_and_children(child, depth + 1)
 
     # Initial fetch: get all root pages
     while url:
@@ -96,12 +103,11 @@ def get_all_pages(space_key):
         url = data.get("_links", {}).get("next")
         if url:
             url = CONFLUENCE_BASE_URL + url
-        params = None  # Only needed for first request
+        params = None
     return all_pages
 
 
 def main():
-    # Read space keys from env (already split and stripped)
     for space_key in SPACE_KEYS:
         output_dir = os.path.join("docs-confluence", space_key.lower())
         print(f"Fetching ALL pages (including subpages) from space: {space_key}")

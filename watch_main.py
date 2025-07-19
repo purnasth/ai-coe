@@ -8,6 +8,7 @@ import threading
 
 WATCHED_EXTENSIONS = [".py"]
 EXCLUDE_DIRS = {"__pycache__", ".venv", "chroma_db"}
+EXCLUDE_SELF = False
 
 
 class RestartOnChangeHandler(FileSystemEventHandler):
@@ -42,7 +43,9 @@ class RestartOnChangeHandler(FileSystemEventHandler):
             return
         if any(excl in event.src_path for excl in EXCLUDE_DIRS):
             return
-        if os.path.abspath(event.src_path) == os.path.abspath(__file__):
+        if EXCLUDE_SELF and os.path.abspath(event.src_path) == os.path.abspath(
+            __file__
+        ):
             return
         print(f"Detected change in {event.src_path}, scheduling restart of main.py...")
         self._debounced_restart()

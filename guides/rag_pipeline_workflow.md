@@ -66,7 +66,7 @@ python main.py
 ### 3. Inspecting the Vector Store
 
 To see what is stored in your ChromaDB vector store:
-
+llm = ChatOpenAI(openai_api_key=api_key, temperature=0.2, model="gpt-4.1-nano")
 ```bash
 python inspect_chromadb.py
 ```

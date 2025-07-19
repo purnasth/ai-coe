@@ -5,6 +5,7 @@ Usage:
 """
 
 from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,8 +14,11 @@ CHROMA_DIR = "chroma_db"
 
 
 def main():
-    # Load the Chroma vector store
-    vectorstore = Chroma(persist_directory=CHROMA_DIR)
+    # Load the Chroma vector store with the same embedding function used during creation
+    vectorstore = Chroma(
+        persist_directory=CHROMA_DIR, embedding_function=OpenAIEmbeddings()
+    )
+
     # Try to get all stored documents/chunks
     try:
         docs = vectorstore.get()
@@ -22,7 +26,7 @@ def main():
         for i, doc in enumerate(docs["documents"]):
             print(f"\n--- Chunk {i+1} ---")
             print(doc)
-            # Optionally print metadata
+
             if "metadatas" in docs:
                 print("Metadata:", docs["metadatas"][i])
     except Exception as e:
