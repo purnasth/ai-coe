@@ -12,6 +12,8 @@ CONFLUENCE_BASE_URL = os.getenv("CONFLUENCE_BASE_URL")
 EMAIL = os.getenv("CONFLUENCE_EMAIL")
 API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN")
 SPACE_KEY = os.getenv("CONFLUENCE_SPACE_KEY")
+SPACE_KEYS = os.getenv("CONFLUENCE_SPACE_KEYS", "VYAGUTA,LEAP").split(",")
+SPACE_KEYS = [k.strip() for k in SPACE_KEYS if k.strip()]
 OUTPUT_DIR = "docs-confluence"
 
 if not CONFLUENCE_BASE_URL or not EMAIL or not API_TOKEN:
@@ -44,7 +46,7 @@ def get_page_ids(space_key):
     return [(p["id"], p["title"]) for p in results]
 
 
-def fetch_and_save_page(page_id, title):
+def fetch_and_save_page(page_id, title, output_dir):
     url = f"{CONFLUENCE_BASE_URL}/rest/api/content/{page_id}?expand=body.storage"
     auth = (EMAIL, API_TOKEN)
     headers = {"Accept": "application/json"}
@@ -53,22 +55,71 @@ def fetch_and_save_page(page_id, title):
     html = resp.json()["body"]["storage"]["value"]
     md_content = md(html)
     filename = f"{title.replace('/', '_').replace(' ', '_')}.md"
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    with open(os.path.join(OUTPUT_DIR, filename), "w", encoding="utf-8") as f:
+    os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, filename), "w", encoding="utf-8") as f:
         f.write(md_content)
-    print(f"Saved: {filename}")
+    print(f"Saved: {filename} in {output_dir}")
+
+
+def get_all_pages(space_key):
+    """
+    Recursively fetch all pages and subpages in the given Confluence space.
+    Returns a list of (page_id, title) tuples for all pages.
+    """
+    url = f"{CONFLUENCE_BASE_URL}/rest/api/content"
+    params = {"spaceKey": space_key, "limit": 100, "expand": "ancestors,children.page"}
+    auth = (EMAIL, API_TOKEN)
+    headers = {"Accept": "application/json"}
+    all_pages = []
+    seen_ids = set()
+    MAX_DEPTH = 20
+
+    def fetch_page_and_children(page, depth=0):
+        if depth > MAX_DEPTH:
+            print(
+                f"Maximum depth of {MAX_DEPTH} reached for page {page['id']} ({page['title']}). Skipping further recursion."
+            )
+            return
+        page_id = page["id"]
+        title = page["title"]
+        if page_id in seen_ids:
+            return
+        seen_ids.add(page_id)  # Mark the page as seen before processing
+        all_pages.append((page_id, title))
+        # Recursively fetch children
+        children = page.get("children", {}).get("page", {}).get("results", [])
+        for child in children:
+            fetch_page_and_children(child, depth + 1)
+
+    # Initial fetch: get all root pages
+    while url:
+        resp = requests.get(url, auth=auth, headers=headers, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        results = data.get("results", [])
+        for page in results:
+            fetch_page_and_children(page)
+        # Pagination
+        url = data.get("_links", {}).get("next")
+        if url:
+            url = CONFLUENCE_BASE_URL + url
+        params = None
+    return all_pages
 
 
 def main():
-    space_key = get_space_key()
-    print(f"Fetching pages from space: {space_key}")
-    pages = get_page_ids(space_key)
-    if not pages:
-        print("No pages found in this space or you may not have access.")
-        return
-    for page_id, title in pages:
-        fetch_and_save_page(page_id, title)
-    print("All pages fetched and saved as markdown in the docs/ folder.")
+    for space_key in SPACE_KEYS:
+        output_dir = os.path.join("docs-confluence", space_key.lower())
+        print(f"Fetching ALL pages (including subpages) from space: {space_key}")
+        pages = get_all_pages(space_key)
+        if not pages:
+            print(f"No pages found in space {space_key} or you may not have access.")
+            continue
+        for page_id, title in pages:
+            fetch_and_save_page(page_id, title, output_dir)
+        print(
+            f"All pages and subpages fetched and saved as markdown in the {output_dir}/ folder."
+        )
 
 
 if __name__ == "__main__":

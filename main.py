@@ -12,6 +12,7 @@ All major functions and classes are documented with docstrings for clarity and m
 """
 
 import os
+import time
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.chains import RetrievalQA
@@ -19,11 +20,20 @@ from langchain.prompts import PromptTemplate
 from auth import app_startup
 from rag_pipeline import setup_rag_pipeline
 
+# --- Debug logging ---
+def debug_log(msg):
+    print(f"[DEBUG {time.strftime('%H:%M:%S')}] {msg}")
+
+
 # --- Authenticate and refresh Vyaguta access token at startup ---
+debug_log("Starting authentication (app_startup)")
 app_startup()
+debug_log("Authentication complete")
 
 # --- Setup RAG pipeline with Chroma retriever ---
-retriever = setup_rag_pipeline(["docs", "docs-api/people", "docs-confluence"])
+debug_log("Setting up RAG pipeline")
+retriever = setup_rag_pipeline(["docs", "docs-api/people", "docs-confluence"], force_rebuild=False)
+debug_log("RAG pipeline setup complete")
 
 
 def load_api_key() -> str:
@@ -33,8 +43,11 @@ def load_api_key() -> str:
     Returns:
         str: The OpenAI API key.
     """
+    debug_log("Loading OpenAI API key")
     load_dotenv()
-    return os.getenv("OPENAI_API_KEY")
+    key = os.getenv("OPENAI_API_KEY")
+    debug_log("Loaded OpenAI API key")
+    return key
 
 
 OPENAI_API_KEY = load_api_key()
@@ -43,20 +56,26 @@ OPENAI_API_KEY = load_api_key()
 def get_prompt_template() -> PromptTemplate:
     """
     Returns a prompt template for the onboarding assistant, instructing the LLM to quote or summarize exact steps, rules, or lists from the markdown context.
-
-    Returns:
-        PromptTemplate: The prompt template for the LLM.
+    If there are multiple people with the same name, list all of them with their details. For multiple matches, start your answer with a phrase like: "There are X people named Y:" and then list each one. For a single match, answer as usual.
     """
     return PromptTemplate(
         template="""
 You are Vyaguta's assistant. Use the provided context to answer user questions about Vyaguta's modules, features, onboarding procedures, tools, policies, coding guidelines, and any information available about Vyaguta and Leapfrog.
 
-When answering, always quote or summarize the exact steps, rules, or lists from the context if available (e.g., bullet points, numbered steps, or code blocks). If the answer is a process or policy, provide the step-by-step instructions or rules as written in the documentation. If the answer is a definition or guideline, quote the relevant section or list.
+When answering about a person:
+- For general introduction queries (e.g., "Who is Purna?"), always respond in the following format:
+  "{{Full Name}} is a {{Designation}} at Leapfrog Technology, currently working in the {{Department}} department. They joined the company on {{Join Date}} and contribute within the {{Area}}. Based in {{Address}}, {{Full Name}} is a {{Scheduled Type}} team member working {{Working Shift}}. {{He/She}} is recognized for {{short summary of skills or qualities}}. You can reach {{him/her}} via email at {{Email}} or on mobile at {{Mobile Phone}}."
+- Summarize skills and qualities briefly (e.g., "recognized for technical aptitude, creative mindset, and collaborative spirit").
+- Do not include employee ID, contract type, GitHub ID, or other details unless specifically requested.
+- If the user asks for detailed information (e.g., skills, GitHub, marital status, past experience, emergency contacts, etc.), provide those details in a readable format, using all available data from the context.
+- If the query matches multiple people, start with: "There are X people named Y:" only if X > 1, and list each with their introduction as above.
+- If the query matches exactly one person, simply introduce them as above.
+- If no matches are found, politely say you do not have information about that person.
 
-If the user asks about the creator or author of Vyaguta Assistant Chatbot, answer with:
+If the user asks about the creator or author of Vyaguta Assistant Chatbot (the assistant itself), answer with:
 "Vyaguta Assistant Chatbot was created by Purna Bahadur Shrestha, Associate Software Engineer at Leapfrog Technology. You can reach him at purnashrestha@lftechnology.com."
 
-If you are unsure or cannot find the answer in the provided context, politely say you are not sure or do not know. Do not make up answers. If you have already told the user you do not know for a similar question before, then suggest they visit these official resources for more information:
+If you are unsure or cannot find the answer in the provided context, politely say you are not sure or do not know. If you have already told the user you do not know for a similar question before, then suggest they visit these official resources for more information:
 - Vyaguta Portal: https://vyaguta.lftechnology.com/
 - Vyaguta Wiki: https://lftechnology.atlassian.net/wiki/spaces/VYAGUTA/overview
 
@@ -84,7 +103,10 @@ def get_llm(api_key: str):
     Returns:
         ChatOpenAI: The LLM instance.
     """
-    return ChatOpenAI(openai_api_key=api_key, temperature=0.2, model="gpt-4.1-nano")
+    debug_log("Initializing LLM")
+    llm = ChatOpenAI(openai_api_key=api_key, temperature=0.2, model="gpt-4.1-nano")
+    debug_log("LLM initialized")
+    return llm
 
 
 llm = get_llm(OPENAI_API_KEY)
@@ -101,12 +123,15 @@ def build_qa_chain(llm, retriever, prompt):
     Returns:
         RetrievalQA: The QA chain for answering questions.
     """
-    return RetrievalQA.from_chain_type(
+    debug_log("Building QA chain")
+    chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
         chain_type="stuff",
         chain_type_kwargs={"prompt": prompt},
     )
+    debug_log("QA chain built")
+    return chain
 
 
 qa_chain = build_qa_chain(llm, retriever, prompt)
@@ -116,6 +141,7 @@ def main():
     """
     Runs the Vyaguta Assistant Chatbot in a terminal chat loop.
     """
+    debug_log("Entering main chat loop")
     import sys
 
     try:
@@ -145,12 +171,14 @@ def main():
             if COLORAMA
             else "\nYou > "
         )
+        debug_log("Waiting for user input")
         question = input(user_prompt)
+        debug_log(f"User input: {question}")
         if question.strip().lower() == "exit":
             break
-
-        # --- All queries handled by RAG pipeline ---
+        debug_log("Invoking QA chain")
         result = qa_chain.invoke({"query": question})
+        debug_log("QA chain invocation complete")
         answer = result["result"]
         unsure_phrases = [
             "I'm not sure about that based on the current information",
@@ -208,6 +236,7 @@ Answer:
             else "\nAssistant:"
         )
         answer_body = color_text(answer, Fore.YELLOW) if COLORAMA else answer
+        debug_log("Answer ready, printing to user")
         print(answer_header)
         print(answer_body)
 

@@ -14,3 +14,4 @@ chromadb>=0.5.0
 langchain-community>=0.0.30
 langchain-openai>=0.1.6
 colorama>=0.4.6
+watchdog
