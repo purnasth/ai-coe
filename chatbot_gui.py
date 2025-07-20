@@ -83,29 +83,30 @@ with st.sidebar:
     )
 
     # --- Chat Sessions ---
-    if st.button("New Chat", use_container_width=True):
+    if st.button("New Chat", use_container_width=True, type="primary"):
+
         st.session_state["messages"] = []
         st.rerun()
 
     # Session selector
-    if st.session_state["chat_sessions"]:
-        selected_session = st.selectbox(
-            "Load Session",
-            options=list(st.session_state["chat_sessions"].keys()),
-            index=(
-                0
-                if st.session_state["current_session"]
-                in st.session_state["chat_sessions"]
-                else 0
-            ),
-        )
+    # if st.session_state["chat_sessions"]:
+    #     selected_session = st.selectbox(
+    #         "Load Session",
+    #         options=list(st.session_state["chat_sessions"].keys()),
+    #         index=(
+    #             0
+    #             if st.session_state["current_session"]
+    #             in st.session_state["chat_sessions"]
+    #             else 0
+    #         ),
+    #     )
 
-        if st.button("📂 Load Selected", use_container_width=True):
-            st.session_state["current_session"] = selected_session
-            st.session_state["messages"] = st.session_state["chat_sessions"][
-                selected_session
-            ].copy()
-            st.rerun()
+    #     if st.button("📂 Load Selected", use_container_width=True):
+    #         st.session_state["current_session"] = selected_session
+    #         st.session_state["messages"] = st.session_state["chat_sessions"][
+    #             selected_session
+    #         ].copy()
+    #         st.rerun()
 
     # st.markdown("---")
 
@@ -114,12 +115,12 @@ with st.sidebar:
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Clear", use_container_width=True):
+        if st.button("Clear", use_container_width=True, type="secondary"):
             st.session_state["messages"] = []
             st.rerun()
 
     with col2:
-        if st.button("Export", use_container_width=True):
+        if st.button("Export", use_container_width=True, type="secondary"):
             chat_data = {
                 "session": st.session_state["current_session"],
                 "messages": st.session_state["messages"],
@@ -142,8 +143,8 @@ with st.sidebar:
     st.markdown(
         f"""
     <div class='stat-card'>
-        <h4 style='margin: 0; color: white;'>{len(st.session_state['messages'])}</h4>
-        <p style='margin: 0; color: rgba(255, 255, 255, 0.8);'>Total Messages</p>
+        <h4>{len(st.session_state['messages'])}</h4>
+        <p>Total Messages</p>
     </div>
     """,
         unsafe_allow_html=True,
@@ -159,8 +160,8 @@ with st.sidebar:
         st.markdown(
             f"""
         <div class='stat-card'>
-            <h5 style='margin: 0; color: #667eea;'>{user_msgs}</h5>
-            <p style='margin: 0; color: rgba(255, 255, 255, 0.7); font-size: 0.8rem;'>You</p>
+            <h5 style='color: #3a8dff;'>{user_msgs}</h5>
+            <p>You</p>
         </div>
         """,
             unsafe_allow_html=True,
@@ -170,8 +171,8 @@ with st.sidebar:
         st.markdown(
             f"""
         <div class='stat-card'>
-            <h5 style='margin: 0; color: #764ba2;'>{assistant_msgs}</h5>
-            <p style='margin: 0; color: rgba(255, 255, 255, 0.7); font-size: 0.8rem;'>AI</p>
+            <h5 style='color: #ff75c2;'>{assistant_msgs}</h5>
+            <p>AI</p>
         </div>
         """,
             unsafe_allow_html=True,
@@ -256,8 +257,11 @@ st.markdown(
 
 # Filter messages if search term exists (now uses sidebar value)
 display_messages = st.session_state["messages"]
-if "search_term" in st.session_state and st.session_state["search_term"]:
-    search_term = st.session_state["search_term"]
+if (
+    "sidebar_search_term" in st.session_state
+    and st.session_state["sidebar_search_term"]
+):
+    search_term = st.session_state["sidebar_search_term"]
     display_messages = [
         msg
         for msg in st.session_state["messages"]
@@ -272,7 +276,9 @@ if not st.session_state["messages"]:
     st.markdown(
         """
     <div class='assistant-message'>
-        <div class='avatar assistant-avatar'>🤖</div>
+        <div class='avatar assistant-avatar'>
+            <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+            </div>
         <div class='assistant-bubble'>
             <strong>Welcome to Vyaguta AI Assistant! 👋</strong><br><br>
             I'm here to help you with:
@@ -297,15 +303,19 @@ for i, msg in enumerate(display_messages):
             f"""
         <div class='user-message'>
             <div class='user-bubble'>
-                <strong>You:</strong><br>{msg['content']}
+                {msg['content']}
+                <!--
                 <div class='message-actions'>
                     <small style='opacity: 0.7;'>
                         {msg.get('timestamp', 'Just now')} • 
-                        <a href='#' onclick='navigator.clipboard.writeText("{msg["content"][:50]}...")'>📋 Copy</a>
+                        <a href='#' onclick='navigator.clipboard.writeText("{msg["content"][:50]}...")'>Copy</a>
                     </small>
                 </div>
+                -->
             </div>
-            <div class='avatar user-avatar'>👤</div>
+            <div class='avatar user-avatar'>
+            <img src='https://avatars.githubusercontent.com/u/107195487?s=400&u=6120358cdcf760f65cfda7f81e982dfb1d8f7a27&v=4' alt='User Avatar' class='user-avatar-img'/>
+            </div>
         </div>
         """,
             unsafe_allow_html=True,
@@ -317,16 +327,34 @@ for i, msg in enumerate(display_messages):
             [f"{emoji} {count}" for emoji, count in reactions.items() if count > 0]
         )
 
+        # Format timestamp to 12-hour format with am/pm
+        timestamp_val = msg.get("timestamp", "Just now")
+        if timestamp_val not in ["Just now", None, ""]:
+            try:
+                dt = datetime.datetime.strptime(timestamp_val, "%H:%M")
+                timestamp_12hr = dt.strftime("%-I:%M%p").lower()
+            except Exception:
+                timestamp_12hr = timestamp_val
+        else:
+            timestamp_12hr = timestamp_val
+
         st.markdown(
             f"""
         <div class='assistant-message'>
-            <div class='avatar assistant-avatar'>🤖</div>
+            <div class='avatar assistant-avatar'>
+            <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+            </div>
             <div class='assistant-bubble'>
-                <strong>Vyaguta AI:</strong><br>{msg['content']}
+             {msg['content']}
                 <div class='message-actions'>
                     <small style='opacity: 0.7;'>
-                        {msg.get('timestamp', 'Just now')} • 
-                        <a href='#' onclick='navigator.clipboard.writeText("{msg["content"][:50]}...")'>📋 Copy</a>
+                        {timestamp_12hr}
+                        <a href='#' onclick='navigator.clipboard.writeText("{msg["content"][:50]}...")'>
+                        <img src='https://cdn-icons-png.flaticon.com/512/1621/1621635.png' 
+                        alt="Copy"
+                        class="copy-icon"
+                        />
+                        Copy </a>
                     </small>
                 </div>
             </div>
@@ -340,10 +368,8 @@ st.markdown("</div>", unsafe_allow_html=True)
 # --- Input Area ---
 # st.markdown('<div class="input-container">', unsafe_allow_html=True)
 
-# Input methods tabs
-input_tab1, input_tab2, input_tab3 = st.columns([3, 1, 1])
 
-# Handle surprise question injection before widget instantiation
+st.markdown('<div class="centered-input-area">', unsafe_allow_html=True)
 
 # --- Surprise/Quick Question Input Handling ---
 if "surprise_question" in st.session_state:
@@ -352,84 +378,77 @@ if "surprise_question" in st.session_state:
 else:
     default_user_input = ""
 
-with input_tab1:
+# --- Quick Questions Selectbox Reset Logic (must be BEFORE widget instantiation) ---
+if st.session_state.pop("reset_quick_questions", False):
+    st.session_state["quick_questions_selectbox"] = "Quick Questions"
+    st.rerun()
+
+input_outer_col1, input_outer_col2, input_outer_col3 = st.columns([1, 4, 1])
+with input_outer_col2:
     user_input = st.text_area(
-        "💬 Type your message...",
+        "",
         key="user_input",
         height=80,
         value=default_user_input,
-        placeholder="Ask me anything about Vyaguta!",
+        placeholder="Ask me anything about Vyaguta...",
+        label_visibility="collapsed",
     )
 
-with input_tab3:
-    st.markdown("<br>", unsafe_allow_html=True)
-    quick_questions = st.selectbox(
-        "Quick",
-        [
+    # Second row: quick questions, send, surprise
+    st.markdown('<div class="input-btns-row">', unsafe_allow_html=True)
+    btns_col1, btns_col2, btns_col3 = st.columns([3, 1, 1])
+    with btns_col1:
+        quick_questions = st.selectbox(
             "",
-            "What is Vyaguta?",
-            "Contact info at leapfrog?",
-            "Leapfrog Technology?",
-            "Company Calendar",
-            "Lunch and snacks menu",
-            "Speak-up Channels",
-        ],
-        help="Quick questions",
-    )
-
-# Action buttons
-col1, col2, col3 = st.columns([2, 1, 1])
-
-with col1:
-    send_button = st.button("🚀 Send Message", use_container_width=True, type="primary")
-
-with col2:
-    if st.button("🎲 Surprise", use_container_width=True):
-        surprise_questions = [
-            "How does the onboarding process work?",
-            "What tools do employees use?",
-            "Who is Purna Bahadur Shrestha?",
-            "What is GAP?",
-            "How to make a PR at Vyaguta?",
-            "What are the different modules in Vyaguta?",
-            "Describe in detail about the OKR module in Vyaguta.",
-            "Describe in detail about the Pulse module in Vyaguta.",
-            "Describe in detail about the Attendance module in Vyaguta.",
-            "I want to take a leave, what are the types of leaves and how do i apply for that?",
-            "How to install Vyaguta's Attendance module in my local machine?",
-            "What are the tech tools used in Vyaguta?",
-            "How do I report a bug in Vyaguta in Slack?",
-        ]
-        st.session_state["surprise_question"] = surprise_questions[
-            len(st.session_state["messages"]) % len(surprise_questions)
-        ]
-        st.rerun()
-
-with col3:
-    if st.button("💡 Tips", use_container_width=True):
-        st.info(
-            """
-        💡 **Pro Tips:**
-        - Be specific in your questions
-        - Ask about policies, procedures, or people
-        - Use the search feature to find past answers
-        - Save important conversations as sessions
-        """
+            [
+                "Quick Questions",
+                "What is Vyaguta?",
+                "Contact info at leapfrog?",
+                "Leapfrog Technology?",
+                "Company Calendar",
+                "Lunch and snacks menu",
+                "Speak-up Channels",
+            ],
+            key="quick_questions_selectbox",
         )
+    with btns_col2:
+        send_button = st.button(
+            "Send", use_container_width=True, type="primary", help="Send prompt!"
+        )
+    with btns_col3:
+        if st.button("Surprise", use_container_width=True, help="Surprise me!"):
+            surprise_questions = [
+                "How does the onboarding process work?",
+                "What tools do employees use?",
+                "Who is Purna Bahadur Shrestha?",
+                "What is GAP?",
+                "How to make a PR at Vyaguta?",
+                "What are the different modules in Vyaguta?",
+                "Describe in detail about the OKR module in Vyaguta.",
+                "Describe in detail about the Pulse module in Vyaguta.",
+                "Describe in detail about the Attendance module in Vyaguta.",
+                "I want to take a leave, what are the types of leaves and how do i apply for that?",
+                "How to install Vyaguta's Attendance module in my local machine?",
+                "What are the tech tools used in Vyaguta?",
+                "How do I report a bug in Vyaguta in Slack?",
+            ]
+            st.session_state["surprise_question"] = surprise_questions[
+                len(st.session_state["messages"]) % len(surprise_questions)
+            ]
+            st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# Handle quick questions
-
-# --- Surprise and Quick Question Auto-Send Logic ---
 
 # --- Surprise and Quick Question Auto-Send Logic ---
 auto_send = False
 if st.session_state.pop("auto_send_surprise", False):
     auto_send = True
-if quick_questions and quick_questions != "":
+if quick_questions and quick_questions != "Quick Questions":
     user_input = quick_questions
     auto_send = True
+    st.session_state["reset_quick_questions"] = True
 
 
 # --- Message Processing ---
@@ -448,21 +467,25 @@ def process_message(user_input, model_option):
             st.markdown(
                 """
             <div class='typing-indicator'>
-                <div class='avatar assistant-avatar'>🤖</div>
-                <div style='margin-left: 1rem;'>
-                    Vyaguta AI is thinking
-                    <span class='dot'></span>
-                    <span class='dot'></span>
-                    <span class='dot'></span>
-                </div>
+               <div class='avatar assistant-avatar'>
+                   <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+               </div>
+               <div>
+                   Vyaguta AI is thinking
+                   <span class='typing-dots'>
+                       <span class='dot'></span>
+                       <span class='dot'></span>
+                       <span class='dot'></span>
+                   </span>
+               </div>
             </div>
             """,
                 unsafe_allow_html=True,
             )
             time.sleep(1.5)
 
-    # Get AI response
-    with st.spinner("🧠 Processing your query..."):
+        # Get AI response
+        # with st.spinner("\U0001f9e0 Processing your query..."):
         try:
             api_key = OPENAI_API_KEY
             response = get_response(user_input.strip(), api_key, model_option)
@@ -533,7 +556,9 @@ if send_button and user_input.strip():
             st.markdown(
                 """
             <div class='typing-indicator'>
-                <div class='avatar assistant-avatar'>🤖</div>
+                <div class='avatar assistant-avatar'>
+            <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+            </div>
                 <div style='margin-left: 1rem;'>
                     Vyaguta AI is thinking
                     <span class='dot'></span>
