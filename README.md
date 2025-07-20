@@ -1,235 +1,128 @@
-# Vyaguta Onboarding Assistant Chatbot (Python + LangChain + RAG)
+# Vyaguta AI Assistant
 
-This is a minimal terminal-based MVP for the Vyaguta onboarding assistant chatbot, now using Python, LangChain, and OpenAI.
+Vyaguta AI Assistant is an intelligent chatbot designed to help Leapfrog employees and new joiners quickly find information about Vyaguta’s modules, onboarding, policies, tools, and more. It leverages Retrieval-Augmented Generation (RAG), LangChain, and OpenAI’s LLMs to provide instant, context-aware answers from company documentation and knowledge bases.
 
-## Structure
+<img width="2566" height="1606" alt="53144_3aa9f665ec38d2b2c16cae4689619ddd5dd0d3b6d3f04f4d9795f087b25a6c6c" src="https://github.com/user-attachments/assets/f52c3cfd-0cdb-46bf-a23b-bb5261c68f99" />
 
-- `chatbot/` — Contains all code for the chatbot (run in terminal for now)
-- `docs/` — Place onboarding docs/FAQs here (plain text/markdown)
 
-## Prerequisites
+## What is Vyaguta AI Assistant?
 
-- Python 3.10+
-- [Poetry](https://python-poetry.org/) (recommended) or pip
-- OpenAI API key
+Vyaguta AI Assistant is your smart companion for all things Vyaguta and Leapfrog. It can:
 
-## Setup
+- Answer questions about Vyaguta modules (OKR, Pulse, Attendance, GAP, etc.)
+- Guide you through onboarding, policies, and company processes
+- Help you find team contacts, resources, and tools
+- Explain coding guidelines and best practices
+- Provide instant, reliable answers from internal docs and FAQs
 
-1. Install dependencies:
-   ```bash
-   cd chatbot
-   poetry install
-   # or, if using pip:
-   pip install -r requirements.txt
-   # If you see missing module errors, also run:
-   pip install langchain-community langchain-openai faiss-cpu
-   ```
-2. Add your onboarding docs/FAQs to `docs/` (already present).
-3. Create a `.env` file in `chatbot/`:
-   ```env
-   OPENAI_API_KEY=your-openai-api-key
-   ```
-4. Run the chatbot in the terminal:
-   ```bash
-   poetry run python main.py
-   # or, if using pip:
-   python main.py
-   ```
+## How does it work? (Workflow Overview)
+
+Vyaguta AI Assistant follows a Retrieval-Augmented Generation (RAG) workflow, combining company knowledge with advanced language models to deliver accurate, context-aware answers. Here’s how the system works:
+
+### 1. Data Sources
+
+- **Local Documents:** Markdown files in the `docs/` directory (policies, onboarding, guidelines, etc.)
+- **Vyaguta API:** Live employee and people data fetched from Vyaguta’s internal API
+- **(Optional) Confluence:** Company wiki pages (integration available, see guides)
+
+### 2. Document Processing & Embeddings
+
+- Documents are loaded and split into chunks using markdown header-based splitting for fine-grained retrieval
+- Each chunk is embedded using OpenAI Embeddings (Ada-002)
+- All embeddings are stored in a FAISS vector database/ chromaDB for fast similarity search
+
+### 3. Retrieval-Augmented Generation (RAG)
+
+- When a user asks a question, the system retrieves the most relevant document chunks using semantic search
+- A hybrid retriever with contextual compression ensures only the most relevant information is passed to the LLM
+
+### 4. Large Language Model (LLM)
+
+- The retrieved context is sent to an OpenAI LLM (e.g., GPT-4.1-nano)
+- A custom prompt template ensures answers are tailored to Vyaguta and Leapfrog
+
+### 5. Answer Delivery
+
+- The LLM generates a helpful, context-aware answer
+- The answer is displayed in a modern chat UI (Streamlit), with features like quick questions, reactions, and chat export
+
+#### Visual Workflow
+
+```mermaid
+flowchart TD
+    A[User Query] --> B[LangChain Orchestration]
+    B --> C{RAG: Retrieve Relevant Docs}
+
+    subgraph "Data Sources"
+        D[Confluence Docs]
+        E[Vyaguta APIs]
+    end
+
+    subgraph "Vector Database"
+        H[Processed Document Chunks]
+        I[Vector Embeddings]
+        J[Metadata & Source Info]
+    end
+
+    D --> H
+    E --> H
+    H --> I
+
+    C --> I
+    I --> K[Context Retrieval]
+    K --> L[LLM OpenAI/GPT]
+    L --> M[Chatbot Response]
+    B --> L
+```
+
+```mermaid
+flowchart TD
+    A[User Query] --> B[LangChain Orchestration]
+    B --> C{RAG: Retrieve Relevant Docs}
+
+    subgraph "Data Sources"
+        D[Confluence Docs]
+        E[Vyaguta APIs]
+        F[Local Markdown Docs]
+    end
+
+    subgraph "Vector Databases"
+        G[Processed Document Chunks]
+        H[Vector Embeddings]
+        I[FAISS Vector Store]
+        J[ChromaDB Vector Store]
+        K[Metadata & Source Info]
+    end
+
+    D --> G
+    E --> G
+    F --> G
+    G --> H
+    H --> I
+    H --> J
+    G --> K
+
+    C --> I
+    C --> J
+    I --> L[Context Retrieval]
+    J --> L
+    L --> M[LLM OpenAI/GPT]
+    M --> N[Chatbot Response]
+    B --> M
+```
+
+For a detailed technical breakdown and architecture, see `/guides/workflow-explanation.md`.
+
+## Tech Stack
+
+- **LLMs:** OpenAI’s GPT models for natural language understanding and generation
+- **RAG:** Retrieval-Augmented Generation for context-aware answers
+- **LangChain:** For managing the workflow and integrating components
+- **OpenAI:** For semantic search and document retrieval
+- **Data Storage:** FAISS vector database/ chromaDB for fast similarity search
+- **Frontend:** Streamlit for modern, interactive UI
+- **Backend:** LangChain for orchestration, OpenAI for LLMs
 
 ---
 
-## Sample Inputs and Expected Outputs
-
-### Example 1
-
-**Input:**
-
-```
-How do I request leave?
-```
-
-**Expected Output:**
-
-```
-Answer: To request leave in Vyaguta:
-1. Go to the Attendance module.
-2. Click on 'Request Leave'.
-3. Fill in the required details and submit.
-```
-
-### Example 2
-
-**Input:**
-
-```
-What is OKR?
-```
-
-**Expected Output:**
-
-```
-Answer: OKR stands for Objectives and Key Results. It is a goal-setting framework used in Vyaguta to align individual and team objectives with company goals.
-```
-
-### Example 3
-
-**Input:**
-
-```
-How does Pulse work?
-```
-
-**Expected Output:**
-
-```
-Answer: Pulse is Vyaguta's feedback and engagement tool. Employees can give and receive feedback, and management can monitor engagement trends.
-```
-
-### To exit
-
-Type:
-
-```
-exit
-```
-
----
-
-## Pulse
-
-Vyaguta Pulse flow starts with the creation of a Pulse profile after an individual is onboarded to their respective Area within Leapfrog. A Pulse profile accumulates the timeline of a Leapfrogger’s journey and growth at Leapfrog. The Pulse process involves multiple parties (POps, Appraisee, Appraiser/Co-appraiser, Team Manager, Leapfroggers, Project Leader, Spearheads) and includes steps like Expectation Setting, Self-reflection, Feedback, Promotion/Performance Improvement Plan, Ask for Help, and Pulse Walkthrough.
-
-Pulse is designed to foster a culture of continuous feedback, align progress towards set expectations, and focus on performance development through regular check-ins and feedback cycles. The process is detailed and involves quarterly cycles, performance improvement plans, and integration with annual evaluations.
-
----
-
-## Sample Inputs and Expected Outputs (Pulse)
-
-### Example 4
-
-**Input:**
-
-```
-What is Vyaguta Pulse?
-```
-
-**Expected Output:**
-
-```
-[AI Answer]: Vyaguta Pulse is a feedback-based development system introduced for the growth and development of individuals through continuous quarterly check-ins between the Appraiser and the Appraisee on the basis of predefined and agreed set of expectations. Its objective is to foster a culture of continuous feedback and align progress towards set expectations.
-```
-
-### Example 5
-
-**Input:**
-
-```
-Who can be placed under Performance Improvement Plan (PIP) in Pulse?
-```
-
-**Expected Output:**
-
-```
-[AI Answer]: All full time/part time employees at Leapfrog including fixed term, probation, and permanent employees are within the scope of being placed in Performance Improvement Plan (PIP).
-```
-
-### Example 6
-
-**Input:**
-
-```
-How does feedback work in Pulse?
-```
-
-**Expected Output:**
-
-```
-[AI Answer]: Feedback in Pulse is given by the Appraiser on the Appraisee's achievements, updates, or tasks. The Appraisee can reply or comment, and the conversation continues. Feedback can be given at any point during the quarter, at the end of a project, or during project transfer. The goal is to have more feedback loops for continuous assessment.
-```
-
-### Example 7
-
-**Input:**
-
-```
-What happens if expectations set in Pulse are not met?
-```
-
-**Expected Output:**
-
-```
-[AI Answer]: If expectations set in Pulse are not met, the Appraiser may place the Appraisee under a Performance Improvement Plan (PIP) for closer observation and support to help them meet the required expectations.
-```
-
-### Example 8
-
-**Input:**
-
-```
-How is quarterly feedback used in the annual performance evaluation?
-```
-
-**Expected Output:**
-
-```
-[AI Answer]: The summary feedback of all quarters recorded in Pulse is used during the Annual Performance Evaluation. This removes the need to revisit every feedback given throughout the year, as the summary is auto-reflected for the final evaluation.
-```
-
----
-
-## What is a Python Virtual Environment (venv)?
-
-A virtual environment (venv) is a self-contained directory that contains its own Python installation and packages, isolated from the global Python environment. This helps you avoid conflicts between projects and keeps dependencies organized—similar to how `node_modules` works in React projects.
-
-## Setting Up and Using venv
-
-1. **Create a virtual environment** (only once per project):
-
-   ```bash
-   python3 -m venv .venv
-   ```
-
-   This creates a `.venv` folder in your project directory.
-
-2. **Activate the virtual environment** (every time you start work):
-
-   ```bash
-   source .venv/bin/activate
-   ```
-
-   Your terminal prompt will change to show you are in the venv.
-
-3. **Install dependencies** (inside the activated venv):
-
-   ```bash
-   python3 -m pip install -r requirements.txt
-   ```
-
-   This installs all required packages locally to `.venv`.
-
-4. **Run your scripts** (while venv is activated):
-
-   ```bash
-   python3 main.py
-   # or any other script
-   ```
-
-5. **Deactivate the environment** (when done):
-   ```bash
-   deactivate
-   ```
-
-### Why use venv?
-
-- Keeps dependencies isolated per project
-- Prevents version conflicts
-- Makes your project reproducible for others
-- Easy to clean up (just delete `.venv`)
-
-### Note on global packages
-
-You do not need to delete global packages for your project to work with venv. Your code will use the packages installed in `.venv` when activated. If you want to clean up your global environment, you can uninstall packages globally, but it is optional.
-
----
-
-This MVP demonstrates the core GenAI, LangChain, and RAG concepts from your course syllabus.
+For setup, usage, and advanced guides, see the `/guides/` folder in this repository.

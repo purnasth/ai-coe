@@ -67,17 +67,17 @@ if "message_stats" not in st.session_state:
 with st.sidebar:
     st.markdown(
         """
-    <div class='sidebar-header'>
-        <img src='https://vyaguta.lftechnology.com/favicon.ico' class='sidebar-logo'>
+    <a href="/" class='sidebar-header'>
+        <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' class='sidebar-logo'>
         <h3 class='sidebar-title'>Vyaguta AI</h3>
-    </div>
+    </a>
     """,
         unsafe_allow_html=True,
     )
 
     # --- Search Messages (moved from main content) ---
     search_term = st.text_input(
-        "Search Messages",
+        "&nbsp; Search Messages",
         placeholder="Search your messages...",
         key="sidebar_search_term",
     )
@@ -229,11 +229,18 @@ with st.sidebar:
 
     st.markdown(
         """
-    <div style='text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 10px; margin-top: 1rem;'>
-        <p style='color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; margin: 0;'>
-        © 2025 Leapfrog Technology<br>
-        Vyaguta AI Assistant v2.0
+    <div class="footer">
+        <p class="sidebar-copyright">
+        <span>&copy; 2025</span> | Leapfrog Technology Inc.
         </p>
+        <div class="sidebar-version-github">
+        <p class="sidebar-version">
+        <span>v2.0</span>  Vyaguta AI
+        </p>
+         <a href="https://github.com/purnasth/genai-chatbot" target="_blank" class="sidebar-github">
+       <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" alt="GitHub"/> GitHub
+        </a>
+        </div>
     </div>
     """,
         unsafe_allow_html=True,
@@ -246,7 +253,7 @@ st.markdown(
     <!--
 <div class='main-header'>
      <div class='main-title'>
-        <img src='https://vyaguta.lftechnology.com/favicon.ico' class='sidebar-logo'>
+        <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' class='sidebar-logo'>
         <h3 class='sidebar-title'>Vyaguta AI</h3>
     </div>
     <p class='main-subtitle'>Your intelligent companion for Vyaguta onboarding & support</p>
@@ -280,7 +287,7 @@ if not st.session_state["messages"]:
         """
     <div class='assistant-message'>
         <div class='avatar assistant-avatar'>
-            <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+            <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
         </div>
         <div class='assistant-bubble assistant-welcome-bubble'>
             <div class='welcome-header'>
@@ -358,7 +365,7 @@ for i, msg in enumerate(display_messages):
             f"""
         <div class='assistant-message'>
             <div class='avatar assistant-avatar'>
-            <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+            <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
             </div>
             <div class='assistant-bubble'>
              {msg['content']}
@@ -484,7 +491,7 @@ def process_message(user_input, model_option):
                 """
             <div class='typing-indicator'>
                <div class='avatar assistant-avatar'>
-                   <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+                   <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
                </div>
                <div>
                    Vyaguta AI is thinking
@@ -573,7 +580,7 @@ if send_button and user_input.strip():
                 """
             <div class='typing-indicator'>
                 <div class='avatar assistant-avatar'>
-            <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+            <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
             </div>
                 <div style='margin-left: 1rem;'>
                     Vyaguta AI is thinking
