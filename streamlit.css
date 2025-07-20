@@ -1,0 +1,352 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap");
+
+* {
+  font-family: "Bricolage Grotesque", sans-serif !important;
+}
+
+.st-emotion-cache-ujm5ma,
+.st-emotion-cache-tzrhbk {
+  font-family: "Material Symbols Rounded" !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+}
+
+label,
+a,
+input,
+textarea,
+button {
+  font-weight: 400;
+}
+
+p,
+span,
+ul,
+li,
+input::placeholder- {
+  font-weight: 300 !important;
+}
+
+.block-container {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  width: 100%;
+  /* max-width: 1400px; */
+}
+
+.sidebar-header {
+  text-align: center;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.sidebar-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+.sidebar-title {
+  color: white;
+  padding: 0 !important;
+}
+
+.assistant-welcome-list {
+  margin: 0.5rem 0;
+  padding-left: 1rem;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 2rem;
+  margin: 1rem 0;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
+}
+
+/* Chat Container */
+.chat-container {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.5rem;
+  margin: 1rem 0;
+  max-height: 600px;
+  overflow-y: auto;
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* User Message */
+.user-message {
+  display: flex;
+  justify-content: flex-end;
+  margin: 1rem 0;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.user-bubble {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 20px 20px 5px 20px;
+  max-width: 70%;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  position: relative;
+  word-wrap: break-word;
+}
+
+/* Assistant Message */
+.assistant-message {
+  display: flex;
+  justify-content: flex-start;
+  margin: 1rem 0;
+  animation: slideInLeft 0.3s ease-out;
+}
+
+.assistant-bubble {
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  padding: 1rem 1.5rem;
+  border-radius: 20px 20px 20px 5px;
+  max-width: 80%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  position: relative;
+  word-wrap: break-word;
+}
+
+/* Avatar Styles */
+.avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin: 0 0.8rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.user-avatar {
+  background: linear-gradient(135deg, #ff7eb3, #ff758c);
+}
+
+.assistant-avatar {
+  background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+}
+
+/* Input Area */
+.input-container {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+/* Animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Buttons */
+.stButton > button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 0.8rem 2rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.stButton > button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+  animation: pulse 0.6s infinite;
+}
+
+/* Sidebar */
+.css-1d391kg {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* Header */
+.main-header {
+  text-align: center;
+  padding: 2rem 0;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.main-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.main-subtitle {
+  font-size: 1rem;
+  opacity: 0.9;
+  margin-top: 0.5rem !important;
+  font-weight: 300;
+}
+
+/* Message Actions */
+.message-actions {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.user-message:hover .message-actions,
+.assistant-message:hover .message-actions {
+  opacity: 1;
+}
+
+/* Stats Cards */
+.stat-card {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 1rem;
+  margin: 0.5rem 0;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dot {
+  height: 8px;
+  width: 8px;
+  margin: 0 2px;
+  background-color: #fff;
+  border-radius: 50%;
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Scrollbar */
+.chat-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.sidebar-small-list {
+  font-size: 0.8rem !important;
+  color: #f3f3f3;
+}
+.sidebar-small-list li {
+  margin-bottom: 0.2rem;
+  line-height: 1.4;
+}
+
+.quick-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  overflow-x: auto;
+}
+
+.quick-btn-row .stButton > button {
+  font-size: 0.5rem !important;
+  padding: 0.2rem 0.5rem !important;
+  min-width: unset !important;
+  width: fit-content !important;
+  white-space: nowrap;
+  border-radius: 12px !important;
+}
