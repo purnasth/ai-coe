@@ -78,7 +78,7 @@ with st.sidebar:
     # --- Search Messages (moved from main content) ---
     search_term = st.text_input(
         "Search Messages",
-        placeholder="Search your chat history...",
+        placeholder="Search your messages...",
         key="sidebar_search_term",
     )
 
@@ -138,45 +138,45 @@ with st.sidebar:
     # st.markdown("---")
     # st.markdown("### 📊 Chat Statistics")
 
-    stats = st.session_state["message_stats"]
+    # stats = st.session_state["message_stats"]
 
-    st.markdown(
-        f"""
-    <div class='stat-card'>
-        <h4>{len(st.session_state['messages'])}</h4>
-        <p>Total Messages</p>
-    </div>
-    """,
-        unsafe_allow_html=True,
-    )
+    # st.markdown(
+    #     f"""
+    # <div class='stat-card' style='background: rgba(46, 204, 112, 0.15);'>
+    #     <h4>{len(st.session_state['messages'])}</h4>
+    #     <p>Total Messages</p>
+    # </div>
+    # """,
+    #     unsafe_allow_html=True,
+    # )
 
     user_msgs = len([m for m in st.session_state["messages"] if m["role"] == "user"])
     assistant_msgs = len(
         [m for m in st.session_state["messages"] if m["role"] == "assistant"]
     )
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(
-            f"""
-        <div class='stat-card'>
-            <h5 style='color: #3a8dff;'>{user_msgs}</h5>
-            <p>You</p>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+    # col1, col2 = st.columns(2)
+    # with col1:
+    #     st.markdown(
+    #         f"""
+    #     <div class='stat-card' style='background: rgba(58, 141, 255, 0.15);'>
+    #         <h5 style='color: #3a8dff;'>{user_msgs}</h5>
+    #         <p>You</p>
+    #     </div>
+    #     """,
+    #         unsafe_allow_html=True,
+    #     )
 
-    with col2:
-        st.markdown(
-            f"""
-        <div class='stat-card'>
-            <h5 style='color: #ff75c2;'>{assistant_msgs}</h5>
-            <p>AI</p>
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
+    # with col2:
+    #     st.markdown(
+    #         f"""
+    #     <div class='stat-card' style='background: rgba(255, 117, 194, 0.15);'>
+    #         <h5 style='color: #ff75c2;'>{assistant_msgs}</h5>
+    #         <p>AI</p>
+    #     </div>
+    #     """,
+    #         unsafe_allow_html=True,
+    #     )
 
     # st.markdown("---")
 
@@ -201,7 +201,7 @@ with st.sidebar:
     # --- Help & Info ---
     st.markdown("### Information")
 
-    with st.expander("Features"):
+    with st.expander("Features", expanded=True):
         st.markdown(
             """
         <ul class="sidebar-small-list">
@@ -239,10 +239,11 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-# --- Main Content ---
+# # --- Main Content ---
 # Header
 st.markdown(
     """
+    <!--
 <div class='main-header'>
      <div class='main-title'>
         <img src='https://vyaguta.lftechnology.com/favicon.ico' class='sidebar-logo'>
@@ -250,6 +251,8 @@ st.markdown(
     </div>
     <p class='main-subtitle'>Your intelligent companion for Vyaguta onboarding & support</p>
 </div>
+-->
+<div style="margin-top: 5rem;"></div>
 """,
     unsafe_allow_html=True,
 )
@@ -278,18 +281,31 @@ if not st.session_state["messages"]:
     <div class='assistant-message'>
         <div class='avatar assistant-avatar'>
             <img src='https://vyaguta.lftechnology.com/favicon.ico' alt='Assistant Avatar' class='assistant-avatar-img'/>
+        </div>
+        <div class='assistant-bubble assistant-welcome-bubble'>
+            <div class='welcome-header'>
+                <span class='wave-emoji'>👋</span>
+               Welcome to <span style="color:#2ecc71;">Vyaguta AI</span> — your smart assistant
             </div>
-        <div class='assistant-bubble'>
-            <strong>Welcome to Vyaguta AI Assistant! 👋</strong><br><br>
-            I'm here to help you with:
-            <ul class='assistant-welcome-list'>
-                <li>🚀 Onboarding processes and procedures</li>
-                <li>📋 Company policies and guidelines</li>
-                <li>👥 Team information and contacts</li>
-                <li>🛠️ Tools and resources</li>
-                <li>❓ General questions about Vyaguta</li>
-            </ul>
-            Feel free to ask me anything!
+            <div class='welcome-intro'>
+                <p style='opacity: 0.9;'>
+                Hello! I am Vyaguta's assistant, here to help you with information about Vyaguta's modules, features, onboarding procedures, tools, policies, coding guidelines, and details related to Vyaguta and Leapfrog. If you have any questions or need assistance, feel free to ask!
+                </p>
+                <br>
+                    <span style='color:#3a8dff;'>Ask me about:</span>
+                </span>
+                <ul class='assistant-welcome-list' style='margin-top:0.5rem;'>
+                    <li>✨ Vyaguta modules (OKR, Pulse, Attendance, GAP, & more)</li>
+                    <li>🚀 Onboarding & growth programs</li>
+                    <li>🛠️ Tech tools, resources & coding guidelines</li>
+                    <li>📅 Company calendar, policies & perks</li>
+                    <li>👥 Team info, contacts & speak-up channels</li>
+                    <li>❓ Anything about Vyaguta or Leapfrog</li>
+                </ul>
+            </div>
+            <div class='welcome-highlight'>
+            &#128161; &nbsp; Try the <span>Quick Questions</span> or <span>Surprise Me</span> for instant answers!
+            </div>
         </div>
     </div>
     """,
