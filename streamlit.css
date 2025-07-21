@@ -36,7 +36,6 @@
 
 * {
   font-family: "Syne", "Bricolage Grotesque", sans-serif !important;
-  /* font-family: "Bricolage Grotesque", sans-serif !important; */
   color: var(--vyaguta-white);
 }
 
@@ -615,15 +614,38 @@ h3.sidebar-title {
   border-radius: 1rem;
   position: fixed;
   bottom: 1rem;
-  z-index: 99;
+  z-index: 99 !important;
   width: 700px;
   backdrop-filter: blur(4px);
   left: 50%;
-  border: solid 0.5px rgba(15, 17, 22, 1);
   transform: translate(-50%, 0);
   box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.2);
   /* 0 4px 15px rgba(255, 255, 255, 0.2); */
   height: 170px;
+  border: solid 1px rgba(15, 17, 22, 1);
+}
+
+.loading-glow-indicator {
+  padding: 1rem;
+  border-radius: 1rem;
+  position: fixed;
+  bottom: 1rem;
+  z-index: 99;
+  width: 700px;
+  backdrop-filter: blur(50px);
+  left: 50%;
+  transform: translate(-50%, 0);
+  box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.2);
+  /* 0 4px 15px rgba(255, 255, 255, 0.2); */
+  height: 170px;
+  z-index: 0;
+  border: 2px solid transparent;
+  background: linear-gradient(rgba(14, 17, 23, 0.9), rgba(14, 17, 23, 1))
+      padding-box,
+    var(--vyaguta-gradient-loading) border-box;
+  background-size: 100% 100%, 400% 400%;
+  animation: gradientShift 3s ease-in-out infinite;
+  /* filter: blur(5px); */
 }
 
 /* .st-c3 {
@@ -654,6 +676,14 @@ h3.sidebar-title {
 
 .st-ay {
   font-size: 0.9rem;
+}
+
+.st-emotion-cache-1r61a0z {
+  background: transparent !important;
+  /* background: var(--vyaguta-gradient-loading);
+  bottom: 0;
+  background-size: 300% 300%;
+  animation: gradientShift 3s ease-in-out infinite; */
 }
 
 .footer {

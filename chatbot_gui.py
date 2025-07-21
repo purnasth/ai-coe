@@ -424,9 +424,7 @@ with input_outer_col2:
             key="quick_questions_selectbox",
         )
     with btns_col2:
-        send_button = st.button(
-            "Send", use_container_width=True, type="primary", help="Send prompt!"
-        )
+        send_button = st.button("Send", use_container_width=True, type="primary")
     with btns_col3:
         if st.button("Surprise", use_container_width=True, help="Surprise me!"):
             surprise_questions = [
@@ -474,6 +472,7 @@ def process_message(user_input, model_option):
         with st.empty():
             st.markdown(
                 """
+            <div class="loading-glow-indicator"></div>
             <div class='typing-indicator'>
                <div class='avatar assistant-avatar'>
                    <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
