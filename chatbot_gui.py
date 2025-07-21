@@ -4,7 +4,6 @@ Vyaguta Assistant Chatbot - Premium Streamlit GUI
 Features:
 - Modern glassmorphism design with gradients
 - Advanced chat UI with typing animations
-- Message reactions and feedback system
 - Chat export functionality
 - Voice input simulation
 - Advanced settings panel
@@ -25,19 +24,16 @@ import datetime
 import streamlit as st
 from main import qa_chain, get_llm, OPENAI_API_KEY
 
-# --- Page Configuration ---
 st.set_page_config(
-    page_title="Vyaguta AI Assistant",
-    page_icon="🤖",
+    page_title="Vyaguta AI",
+    page_icon="assets/vyaguta-icon.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# --- Custom CSS for Premium UI ---
 with open("streamlit.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-# --- Initialize Session State ---
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
@@ -50,7 +46,6 @@ if "current_session" not in st.session_state:
 if "user_preferences" not in st.session_state:
     st.session_state["user_preferences"] = {
         "theme": "Modern",
-        "message_reactions": True,
         "typing_animation": True,
         "sound_effects": False,
     }
@@ -63,7 +58,6 @@ if "message_stats" not in st.session_state:
         "session_start": datetime.datetime.now(),
     }
 
-# --- Sidebar ---
 with st.sidebar:
     st.markdown(
         """
@@ -75,14 +69,12 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    # --- Search Messages (moved from main content) ---
     search_term = st.text_input(
         "&nbsp; Search Messages",
         placeholder="Search your messages...",
         key="sidebar_search_term",
     )
 
-    # --- Chat Sessions ---
     if st.button("New Chat", use_container_width=True, type="primary"):
 
         st.session_state["messages"] = []
@@ -198,7 +190,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # --- Help & Info ---
     st.markdown("### Information")
 
     with st.expander("Features", expanded=True):
@@ -246,8 +237,6 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-# # --- Main Content ---
-# Header
 st.markdown(
     """
     <!--
@@ -265,7 +254,6 @@ st.markdown(
 )
 
 
-# Filter messages if search term exists (now uses sidebar value)
 display_messages = st.session_state["messages"]
 if (
     "sidebar_search_term" in st.session_state
@@ -281,18 +269,17 @@ if (
 # # --- Chat Display ---
 # st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
-# Welcome message
 if not st.session_state["messages"]:
     st.markdown(
         """
     <div class='assistant-message'>
-        <div class='avatar assistant-avatar'>
+        <div class='avatar assistant-avatar' style="margin: 0;">
             <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
         </div>
         <div class='assistant-bubble assistant-welcome-bubble'>
             <div class='welcome-header'>
-                <span class='wave-emoji'>👋</span>
-               Welcome to <span style="color:#2ecc71;">Vyaguta AI</span> — your smart assistant
+                <span class='animate-wave'>👋</span>
+               Welcome to <span class="gradient-text">Vyaguta AI</span> — your smart assistant!
             </div>
             <div class='welcome-intro'>
                 <p style='opacity: 0.9;'>
@@ -302,8 +289,8 @@ if not st.session_state["messages"]:
                     <span style='color:#3a8dff;'>Ask me about:</span>
                 </span>
                 <ul class='assistant-welcome-list' style='margin-top:0.5rem;'>
-                    <li>✨ Vyaguta modules (OKR, Pulse, Attendance, GAP, & more)</li>
-                    <li>🚀 Onboarding & growth programs</li>
+                    <li>✨ Vyaguta modules (OKR, Pulse, Attendance, Teams, Core, & more)</li>
+                    <li>🚀 Onboarding, GAP & growth programs</li>
                     <li>🛠️ Tech tools, resources & coding guidelines</li>
                     <li>📅 Company calendar, policies & perks</li>
                     <li>👥 Team info, contacts & speak-up channels</li>
@@ -319,7 +306,6 @@ if not st.session_state["messages"]:
         unsafe_allow_html=True,
     )
 
-# Display messages
 for i, msg in enumerate(display_messages):
     if msg["role"] == "user":
         st.markdown(
@@ -344,12 +330,6 @@ for i, msg in enumerate(display_messages):
             unsafe_allow_html=True,
         )
     else:
-        # Message reactions
-        reactions = msg.get("reactions", {})
-        reaction_display = " ".join(
-            [f"{emoji} {count}" for emoji, count in reactions.items() if count > 0]
-        )
-
         # Format timestamp to 12-hour format with am/pm
         timestamp_val = msg.get("timestamp", "Just now")
         if timestamp_val not in ["Just now", None, ""]:
@@ -394,14 +374,24 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown('<div class="centered-input-area">', unsafe_allow_html=True)
 
-# --- Surprise/Quick Question Input Handling ---
 if "surprise_question" in st.session_state:
     default_user_input = st.session_state.pop("surprise_question")
     st.session_state["auto_send_surprise"] = True
 else:
     default_user_input = ""
 
-# --- Quick Questions Selectbox Reset Logic (must be BEFORE widget instantiation) ---
+if "clear_input" in st.session_state and st.session_state["clear_input"]:
+    default_user_input = ""
+    st.session_state["clear_input"] = False
+
+    if "input_counter" not in st.session_state:
+        st.session_state["input_counter"] = 0
+    st.session_state["input_counter"] += 1
+
+if "input_counter" not in st.session_state:
+    st.session_state["input_counter"] = 0
+
+
 if st.session_state.pop("reset_quick_questions", False):
     st.session_state["quick_questions_selectbox"] = "Quick Questions"
     st.rerun()
@@ -410,14 +400,13 @@ input_outer_col1, input_outer_col2, input_outer_col3 = st.columns([1, 4, 1])
 with input_outer_col2:
     user_input = st.text_area(
         "",
-        key="user_input",
+        key=f"user_input_{st.session_state['input_counter']}",
         height=80,
         value=default_user_input,
         placeholder="Ask me anything about Vyaguta...",
         label_visibility="collapsed",
     )
 
-    # Second row: quick questions, send, surprise
     st.markdown('<div class="input-btns-row">', unsafe_allow_html=True)
     btns_col1, btns_col2, btns_col3 = st.columns([3, 1, 1])
     with btns_col1:
@@ -464,7 +453,6 @@ with input_outer_col2:
 st.markdown("</div>", unsafe_allow_html=True)
 
 
-# --- Surprise and Quick Question Auto-Send Logic ---
 auto_send = False
 if st.session_state.pop("auto_send_surprise", False):
     auto_send = True
@@ -474,9 +462,7 @@ if quick_questions and quick_questions != "Quick Questions":
     st.session_state["reset_quick_questions"] = True
 
 
-# --- Message Processing ---
 def process_message(user_input, model_option):
-    # Add user message
     user_message = {
         "role": "user",
         "content": user_input.strip(),
@@ -484,7 +470,6 @@ def process_message(user_input, model_option):
     }
     st.session_state["messages"].append(user_message)
 
-    # Show typing indicator
     if st.session_state["user_preferences"]["typing_animation"]:
         with st.empty():
             st.markdown(
@@ -493,8 +478,8 @@ def process_message(user_input, model_option):
                <div class='avatar assistant-avatar'>
                    <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
                </div>
-               <div>
-                   Vyaguta AI is thinking
+               <div class='typing-text-container'>
+                   <span class='typing-text-gradient'>Vyaguta AI is thinking</span>
                    <span class='typing-dots'>
                        <span class='dot'></span>
                        <span class='dot'></span>
@@ -507,22 +492,18 @@ def process_message(user_input, model_option):
             )
             time.sleep(1.5)
 
-        # Get AI response
         # with st.spinner("\U0001f9e0 Processing your query..."):
         try:
             api_key = OPENAI_API_KEY
             response = get_response(user_input.strip(), api_key, model_option)
 
-            # Add assistant message
             assistant_message = {
                 "role": "assistant",
                 "content": response,
                 "timestamp": datetime.datetime.now().strftime("%H:%M"),
-                "reactions": {"👍": 0, "👎": 0, "❤️": 0, "🤔": 0},
             }
             st.session_state["messages"].append(assistant_message)
 
-            # Update stats
             st.session_state["message_stats"]["total_messages"] += 2
             st.session_state["message_stats"]["user_messages"] += 1
             st.session_state["message_stats"]["assistant_messages"] += 1
@@ -532,17 +513,15 @@ def process_message(user_input, model_option):
                 "role": "assistant",
                 "content": f"I apologize, but I'm experiencing technical difficulties. Please try again or contact support if the issue persists. Error: {str(e)}",
                 "timestamp": datetime.datetime.now().strftime("%H:%M"),
-                "reactions": {"👍": 0, "👎": 0, "❤️": 0, "🤔": 0},
             }
             st.session_state["messages"].append(error_message)
 
-    # Clear input and refresh (input will clear on rerun)
+    st.session_state["clear_input"] = True
     st.rerun()
 
 
-# Use the new function for both normal and auto-send
 if (send_button or auto_send) and user_input.strip():
-    # Ensure get_response is defined before use
+
     def get_response(question, api_key, model_name):
         """Get response from the AI model"""
         try:
@@ -563,9 +542,7 @@ def add_message_timestamp(messages):
     return messages
 
 
-# Process input
 if send_button and user_input.strip():
-    # Add user message
     user_message = {
         "role": "user",
         "content": user_input.strip(),
@@ -573,43 +550,40 @@ if send_button and user_input.strip():
     }
     st.session_state["messages"].append(user_message)
 
-    # Show typing indicator
     if st.session_state["user_preferences"]["typing_animation"]:
         with st.empty():
             st.markdown(
                 """
             <div class='typing-indicator'>
-                <div class='avatar assistant-avatar'>
-            <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
-            </div>
-                <div style='margin-left: 1rem;'>
-                    Vyaguta AI is thinking
-                    <span class='dot'></span>
-                    <span class='dot'></span>
-                    <span class='dot'></span>
-                </div>
+               <div class='avatar assistant-avatar'>
+                   <img src='https://avatars.githubusercontent.com/u/169975383?s=200&v=4' alt='Assistant Avatar' class='assistant-avatar-img'/>
+               </div>
+               <div class='typing-text-container'>
+                   <span class='typing-text-gradient'>Vyaguta AI is thinking</span>
+                   <span class='typing-dots'>
+                       <span class='dot'></span>
+                       <span class='dot'></span>
+                       <span class='dot'></span>
+                   </span>
+               </div>
             </div>
             """,
                 unsafe_allow_html=True,
             )
             time.sleep(1.5)
 
-    # Get AI response
     with st.spinner("🧠 Processing your query..."):
         try:
             api_key = OPENAI_API_KEY
             response = get_response(user_input.strip(), api_key, model_option)
 
-            # Add assistant message
             assistant_message = {
                 "role": "assistant",
                 "content": response,
                 "timestamp": datetime.datetime.now().strftime("%H:%M"),
-                "reactions": {"👍": 0, "👎": 0, "❤️": 0, "🤔": 0},
             }
             st.session_state["messages"].append(assistant_message)
 
-            # Update stats
             st.session_state["message_stats"]["total_messages"] += 2
             st.session_state["message_stats"]["user_messages"] += 1
             st.session_state["message_stats"]["assistant_messages"] += 1
@@ -619,11 +593,10 @@ if send_button and user_input.strip():
                 "role": "assistant",
                 "content": f"I apologize, but I'm experiencing technical difficulties. Please try again or contact support if the issue persists. Error: {str(e)}",
                 "timestamp": datetime.datetime.now().strftime("%H:%M"),
-                "reactions": {"👍": 0, "👎": 0, "❤️": 0, "🤔": 0},
             }
             st.session_state["messages"].append(error_message)
 
-    # Clear input and refresh (input will clear on rerun)
+    st.session_state["clear_input"] = True
     st.rerun()
 
 
