@@ -112,19 +112,19 @@ with st.sidebar:
             st.rerun()
 
     with col2:
-        if st.button("Export", use_container_width=True, type="secondary"):
-            chat_data = {
-                "session": st.session_state["current_session"],
-                "messages": st.session_state["messages"],
-                "exported_at": datetime.datetime.now().isoformat(),
-            }
-            st.download_button(
-                "💾 Download JSON",
-                data=json.dumps(chat_data, indent=2),
-                file_name=f"vyaguta_chat_{st.session_state['current_session']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json",
-                mime="application/json",
-                use_container_width=True,
-            )
+        chat_data = {
+            "session": st.session_state["current_session"],
+            "messages": st.session_state["messages"],
+            "exported_at": datetime.datetime.now().isoformat(),
+        }
+        st.download_button(
+            "Export",
+            data=json.dumps(chat_data, indent=2),
+            file_name=f"vyaguta_chat_{st.session_state['current_session']}_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.json",
+            mime="application/json",
+            use_container_width=True,
+            type="secondary",
+        )
 
     # --- Statistics ---
     # st.markdown("---")
@@ -415,11 +415,22 @@ with input_outer_col2:
             [
                 "Quick Questions",
                 "What is Vyaguta?",
-                "Contact info at leapfrog?",
-                "Leapfrog Technology?",
+                "Contact person at leapfrog?",
+                "Leapfrog Technology",
                 "Company Calendar",
                 "Lunch and snacks menu",
                 "Speak-up Channels",
+                "Brief all the Employee Benefits Nepal",
+                "Leave types and guidelines Nepal",
+                "JUMP Module",
+                "LWOP",
+                "Fill a worklog",
+                "Employee Morale Survey",
+                "Performance Appraisal Allowances",
+                "Performance Improvement Plan (PIP)",
+                "Team Outing Reimbursement Guidelines",
+                "Promotions in Q3 2025",
+                "Generate your Leapfrog Signature",
             ],
             key="quick_questions_selectbox",
         )
@@ -429,9 +440,9 @@ with input_outer_col2:
         if st.button("Surprise", use_container_width=True, help="Surprise me!"):
             surprise_questions = [
                 "How does the onboarding process work?",
-                "What tools do employees use?",
-                "Who is Purna Bahadur Shrestha?",
-                "What is GAP?",
+                "What tools do employees use at Leapfrog?",
+                "Who is Purna Bahadur Shrestha? How do i contact him? ",
+                "Explain in detail about the GAP.",
                 "How to make a PR at Vyaguta?",
                 "What are the different modules in Vyaguta?",
                 "Describe in detail about the OKR module in Vyaguta.",
@@ -441,6 +452,18 @@ with input_outer_col2:
                 "How to install Vyaguta's Attendance module in my local machine?",
                 "What are the tech tools used in Vyaguta?",
                 "How do I report a bug in Vyaguta in Slack?",
+                "Please provide me a template for requesting a feedback for quarter-end or mid evaluation.",
+                "Describe in brief about the responsibility of a Senior Software Engineer, Development at leapfrog.",
+                "Describe in detail procedure to mentor and train team members.",
+                "How to fill up the worklog at Vyaguta?",
+                "Describe in detail about the GAP.",
+                "What are the Job Description for the role of Software Engineer, Development at leapfrog?",
+                "What are the job description for DevOps Engineer at leapfrog?",
+                "Who is Kailash Raj Bijayananda? How do I contact him?",
+                "What is the process for General Leave Application and Approval Process?",
+                "What are the brand guidelines for leapfrog?",
+                "How can I identify “Meets Expectations” of my team members? Explain in detail.",
+                "How can we practice real-time feedback?",
             ]
             st.session_state["surprise_question"] = surprise_questions[
                 len(st.session_state["messages"]) % len(surprise_questions)
