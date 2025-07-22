@@ -548,7 +548,33 @@ if (send_button or auto_send) and user_input.strip():
         """Get response from the AI model"""
         try:
             llm = get_llm(api_key)
-            result = qa_chain.invoke({"query": question})
+            # --- CONTEXT WINDOW FOR STREAMLIT ---
+            # Use last N turns from st.session_state["messages"]
+            max_history = 3
+            history_text = ""
+            # Only use messages up to this point (exclude current user input)
+            history = [
+                m
+                for m in st.session_state["messages"]
+                if m["role"] in ("user", "assistant")
+            ]
+            # Build pairs of (user, assistant)
+            pairs = []
+            temp_user = None
+            for m in history:
+                if m["role"] == "user":
+                    temp_user = m["content"]
+                elif m["role"] == "assistant" and temp_user is not None:
+                    pairs.append((temp_user, m["content"]))
+                    temp_user = None
+            # If last user message has no assistant reply yet, add it as a single
+            if temp_user is not None:
+                pairs.append((temp_user, ""))
+            for user_msg, assistant_msg in pairs[-max_history:]:
+                history_text += f"User: {user_msg}\nAssistant: {assistant_msg}\n"
+            # Add the current question
+            full_query = f"{history_text}User: {question}"
+            result = qa_chain.invoke({"query": full_query})
             return result["result"]
         except Exception as e:
             return f"I apologize, but I encountered an error: {str(e)}. Please try asking your question in a different way."

@@ -177,6 +177,10 @@ def main():
 
     # people_data is already loaded and indexed for RAG at startup
 
+    # --- CONTEXT WINDOW IMPLEMENTATION ---
+    conversation_history = []  # List of (user, assistant) tuples
+    max_history = 3  # Number of previous turns to remember
+
     while True:
         user_prompt = (
             color_text("\nYou > ", Fore.GREEN + Style.BRIGHT)
@@ -188,8 +192,16 @@ def main():
         debug_log(f"User input: {question}")
         if question.strip().lower() == "exit":
             break
-        debug_log("Invoking QA chain")
-        result = qa_chain.invoke({"query": question})
+
+        # Build conversation context window
+        history_text = ""
+        for user_msg, assistant_msg in conversation_history[-max_history:]:
+            history_text += f"User: {user_msg}\nAssistant: {assistant_msg}\n"
+        # Add the current question
+        full_query = f"{history_text}User: {question}"
+
+        debug_log("Invoking QA chain with context window")
+        result = qa_chain.invoke({"query": full_query})
         debug_log("QA chain invocation complete")
         answer = result["result"]
         unsure_phrases = [
@@ -272,6 +284,9 @@ Answer:
         debug_log("Answer ready, printing to user")
         print(answer_header)
         print(answer_body)
+
+        # Save to conversation history
+        conversation_history.append((question, answer))
 
     if not COLORAMA:
         print(
