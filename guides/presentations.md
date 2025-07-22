@@ -9,7 +9,7 @@
 _Empowering Leapfrog with Instant, Context-Aware Answers_
 
 ---
-
+  
 ## 2. Introduction
 
 ### Problem Statement
@@ -143,6 +143,7 @@ _See `/README.md` and `/guides/workflow-explanation.md` for more diagrams._
 - **User Feedback Loop**: Collect user feedback on answers to improve retrieval and prompt quality
 - **Chain of Thought**: Implement advanced reasoning capabilities for complex queries
 - **Integrate with Vyaguta**: Implement the model into the Vyaguta platform for direct access to the chatbot
+- **Context Windowing**: Implement dynamic context windowing to handle long conversations and maintain relevant context history
 
 ---
 

@@ -88,11 +88,15 @@ If the user asks about promotions in a year (e.g., "Did anyone get promoted in 2
 
 Always be helpful, concise, and polite. If the answer is not in the context, respond with a polite message such as "I'm not sure about that based on the current information." Only after repeated uncertainty (i.e., if you have already said you do not know), provide the above links.
 
+---
+Use Chain of Thought reasoning: Think step by step, and show your reasoning process before giving the final answer. If the question is complex, break it down into logical steps, and explain your thought process clearly before the answer.
+
 Context:
 {context}
 
 Question: {question}
 Answer:
+Let's think step by step.
 """,
         input_variables=["context", "question"],
     )
